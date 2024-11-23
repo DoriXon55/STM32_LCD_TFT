@@ -1,0 +1,11 @@
+../Core/Src/frame.c:30:13:executeONK	24	static
+../Core/Src/frame.c:48:13:executeONP	40	static
+../Core/Src/frame.c:69:13:executeONT	64	static
+../Core/Src/frame.c:87:13:executeONN	2088	static
+../Core/Src/frame.c:112:13:executeOFF	24	static
+../Core/Src/frame.c:129:6:is_within_bounds	16	static
+../Core/Src/frame.c:133:6:parse_coordinates	160	static
+../Core/Src/frame.c:154:8:byteStuffing	32	static
+../Core/Src/frame.c:173:6:prepareFrame	748	dynamic
+../Core/Src/frame.c:223:6:decodeFrame	40	static
+../Core/Src/frame.c:250:6:handleCommand	80	static

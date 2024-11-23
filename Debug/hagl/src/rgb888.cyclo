@@ -1,0 +1,4 @@
+C:/Users/doria/STM32CubeIDE/workspace_1.16.1/MIKRO_PROJECT_FINAL/hagl/include/rgb888.h:49:19:min	2
+C:/Users/doria/STM32CubeIDE/workspace_1.16.1/MIKRO_PROJECT_FINAL/hagl/include/rgb888.h:56:19:max	2
+../hagl/src/rgb888.c:43:7:rgb888_to_hsl	6
+../hagl/src/rgb888.c:90:10:rgb888_to_rgb565	1

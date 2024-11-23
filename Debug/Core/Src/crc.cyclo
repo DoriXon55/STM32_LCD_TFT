@@ -1,0 +1,2 @@
+../Core/Src/crc.c:44:6:calculate_crc16	2
+../Core/Src/crc.c:55:10:crc16_ccitt	2
