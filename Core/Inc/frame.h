@@ -33,9 +33,9 @@
 #define PC_ADDR	'g'
 
 //==============================DEFINICJE WIELKOŚCI=======================================
-#define MAX_DATA_SIZE 128
+#define MAX_DATA_SIZE 256
 #define MIN_FRAME_LEN 9 //TODO zmienić
-#define MAX_FRAME_LEN 256// TODO zmienić
+#define MAX_FRAME_LEN 512// TODO zmienić
 #define COMMAND_LENGTH 3
 #define RAW_FRAME_LEN 9
 #define MIN_DECODED_FRAME_LEN 7

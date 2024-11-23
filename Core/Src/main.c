@@ -144,7 +144,7 @@ int main(void)
 	                  // Przetwarzanie odebranej ramki (np. wywołanie funkcji lub ustawienie flagi)
 	                  if (decodeFrame(bx,&ramka, bx_index)) {
 	                      USART_fsend("SUKCES!\r\n");
-	                      USART_fsend("%d", bx_index);
+	                      USART_fsend("%d\r\n", bx_index);
 	                      handleCommand(&ramka);
 	                  } else {
 	                      USART_fsend("BŁĄD: Dekodowanie ramki nie powiodło się\r\n");

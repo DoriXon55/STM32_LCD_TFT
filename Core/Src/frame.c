@@ -30,7 +30,7 @@ extern volatile int USART_RX_Busy;
 static void executeONK(Receive_Frame *frame)
 {
 
-	USART_fsend("Wykonanie ONK z danymi: %s\n", frame->data);
+	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Wykonanie ONK z danymi: %s\n ", frame->data);
 	uint8_t x = 0, y = 0, r = 0, filling = 0;
 	uint16_t color = 0;
 	lcd_init();
@@ -47,7 +47,7 @@ static void executeONK(Receive_Frame *frame)
 }
 static void executeONP(Receive_Frame *frame)
 {
-	USART_fsend("Wykonanie ONP z danymi: %s\n", frame->data);
+	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Wykonanie ONP z danymi: %s\n ", frame->data);
 	uint8_t x = 0, y = 0, width = 0, height = 0, filling = 0;
 	uint16_t color = 0;
 	lcd_init();
@@ -66,7 +66,7 @@ static void executeONP(Receive_Frame *frame)
 }
 static void executeONT(Receive_Frame *frame)
 {
-	USART_fsend("Wykonanie ONT z danymi: %s\n", frame->data);
+	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Wykonanie ONT z danymi: %s\n ", frame->data);
 	uint8_t x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0, filling = 0;
 	uint16_t color = 0;
 	lcd_init();
@@ -84,9 +84,9 @@ static void executeONT(Receive_Frame *frame)
 }
 static void executeONN(Receive_Frame *frame)
 {
-	USART_fsend("Wykonanie ONN z danymi: %s\n", frame->data);
+	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Wykonanie ONN z danymi: %s\n ", frame->data);
 
-	const char *text[512];
+	const wchar_t text[512];
 	uint8_t x1 = 0, x2 = 0, fontSize = 0;
 	uint16_t color = 0;
 	lcd_init();
@@ -109,7 +109,7 @@ static void executeONN(Receive_Frame *frame)
 }
 static void executeOFF(Receive_Frame *frame)
 {
-	USART_fsend("Wykonanie OFF z danymi: %s\n", frame->data);
+	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Wykonanie OFF z danymi: %s\n ", frame->data);
 	uint8_t state = 0;
 	switch(state)
 	{
@@ -214,7 +214,6 @@ void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const c
 	        USART_fsend("%c", stuffed_payload[i]); // Wyślij dane po byte-stuffingu
 	    }
 	    USART_fsend("%c", FRAME_END); // Wyślij koniec ramki
-
 }
 
 
@@ -261,20 +260,24 @@ void handleCommand(Receive_Frame *frame)
 	            if (parse_coordinates(frame->data, &x, &y)) {
 	                // Sprawdzenie zakresu współrzędnych
 	                if (is_within_bounds(x, y)) {
-	                    USART_fsend("Współrzędne poprawne: x = %d, y = %d\r\n", x, y);
+	                    prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Wspolrzedne poprawne: x = %d, y = %d ", x, y);
+	                    USART_fsend("\r\n");
 	                    commandTable[i].function(frame); // Wywołaj przypisaną funkcję
 	                    return;
 	                } else {
-	                    USART_fsend("Współrzędne poza zakresem: x = %d, y = %d\r\n", x, y);
+	                    prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Współrzędne poza zakresem: x = %d, y = %d ", x, y);
+	                    USART_fsend("\r\n");
 	                    return;
 	                }
 	            } else {
-	                USART_fsend("Błąd parsowania współrzędnych w danych: %s\r\n", frame->data);
+	                prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Błąd parsowania współrzędnych w danych: %s\r\n ", frame->data);
+	                USART_fsend("\r\n");
 	                return;
 	            }
 	        }
 	    }
-	    USART_fsend("Nieznana komenda: %s\r\n", frame->command);
+	    prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Nieznana komenda: %s\r\n ", frame->command);
+	    USART_fsend("\r\n");
 }
 
 /*
