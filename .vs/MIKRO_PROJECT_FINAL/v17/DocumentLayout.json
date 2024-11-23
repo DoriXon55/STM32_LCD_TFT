@@ -3,6 +3,18 @@
   "WorkspaceRootPath": "C:\\Users\\doria\\STM32CubeIDE\\workspace_1.16.1\\MIKRO_PROJECT_FINAL\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\doria\\STM32CubeIDE\\workspace_1.16.1\\MIKRO_PROJECT_FINAL\\Core\\Inc\\lcd.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Core\\Inc\\lcd.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\doria\\STM32CubeIDE\\workspace_1.16.1\\MIKRO_PROJECT_FINAL\\Core\\Inc\\frame.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Core\\Inc\\frame.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\doria\\STM32CubeIDE\\workspace_1.16.1\\MIKRO_PROJECT_FINAL\\Core\\Src\\frame.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Core\\Src\\frame.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\doria\\STM32CubeIDE\\workspace_1.16.1\\MIKRO_PROJECT_FINAL\\Core\\Src\\main.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Core\\Src\\main.c||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
@@ -19,6 +31,45 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "lcd.h",
+              "DocumentMoniker": "C:\\Users\\doria\\STM32CubeIDE\\workspace_1.16.1\\MIKRO_PROJECT_FINAL\\Core\\Inc\\lcd.h",
+              "RelativeDocumentMoniker": "Core\\Inc\\lcd.h",
+              "ToolTip": "C:\\Users\\doria\\STM32CubeIDE\\workspace_1.16.1\\MIKRO_PROJECT_FINAL\\Core\\Inc\\lcd.h",
+              "RelativeToolTip": "Core\\Inc\\lcd.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABoAAAA/AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2024-11-23T18:56:54.606Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "frame.h",
+              "DocumentMoniker": "C:\\Users\\doria\\STM32CubeIDE\\workspace_1.16.1\\MIKRO_PROJECT_FINAL\\Core\\Inc\\frame.h",
+              "RelativeDocumentMoniker": "Core\\Inc\\frame.h",
+              "ToolTip": "C:\\Users\\doria\\STM32CubeIDE\\workspace_1.16.1\\MIKRO_PROJECT_FINAL\\Core\\Inc\\frame.h",
+              "RelativeToolTip": "Core\\Inc\\frame.h",
+              "ViewState": "AgIAABgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2024-11-23T18:56:47.723Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "frame.c",
+              "DocumentMoniker": "C:\\Users\\doria\\STM32CubeIDE\\workspace_1.16.1\\MIKRO_PROJECT_FINAL\\Core\\Src\\frame.c",
+              "RelativeDocumentMoniker": "Core\\Src\\frame.c",
+              "ToolTip": "C:\\Users\\doria\\STM32CubeIDE\\workspace_1.16.1\\MIKRO_PROJECT_FINAL\\Core\\Src\\frame.c",
+              "RelativeToolTip": "Core\\Src\\frame.c",
+              "ViewState": "AgIAABoAAAAAAAAAAAAgwBcBAAAZAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000423|",
+              "WhenOpened": "2024-11-23T18:51:57.172Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
               "Title": "main.c",
               "DocumentMoniker": "C:\\Users\\doria\\STM32CubeIDE\\workspace_1.16.1\\MIKRO_PROJECT_FINAL\\Core\\Src\\main.c",
               "RelativeDocumentMoniker": "Core\\Src\\main.c",

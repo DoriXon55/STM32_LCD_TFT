@@ -25,14 +25,86 @@ extern volatile int USART_RX_Busy;
 
 #include <string.h>
 #include "crc.h"  // Zakładamy, że crc16_ccitt jest zaimplementowane
+
+
+//=========================FUNKCJE POMOCNICZE=============================
+static uint16_t parse_color(const char *color_name) {
+    if (strcmp(color_name, "RED") == 0) return RED;
+    if (strcmp(color_name, "GREEN") == 0) return GREEN;
+    if (strcmp(color_name, "BLUE") == 0) return BLUE;
+    if (strcmp(color_name, "YELLOW") == 0) return YELLOW;
+    if (strcmp(color_name, "MAGENTA") == 0) return MAGENTA;
+    if (strcmp(color_name, "CYAN") == 0) return CYAN;
+    if (strcmp(color_name, "WHITE") == 0) return WHITE;
+    if (strcmp(color_name, "BLACK") == 0) return BLACK;
+    return 0xFFFF; // Nieznany kolor
+}
+
+static bool parse_parameters(const char *data, const char *pattern, ...) {
+    va_list args;
+    va_start(args, pattern);
+
+    const char *current = data;
+    while (*pattern && *current) {
+        switch (*pattern++) {
+            case 'u': { // uint8_t
+                uint8_t *val = va_arg(args, uint8_t *);
+                *val = (uint8_t)strtoul(current, (char **)&current, 10);
+                break;
+            }
+            case 'i': { // int
+                int *val = va_arg(args, int *);
+                *val = (int)strtol(current, (char **)&current, 10);
+                break;
+            }
+            case 'h': { // uint16_t
+                uint16_t *val = va_arg(args, uint16_t *);
+                *val = (uint16_t)strtoul(current, (char **)&current, 10);
+                break;
+            }
+            case 's': { // Kolor (string -> uint16_t)
+                uint16_t *val = va_arg(args, uint16_t *);
+                char color[16]; // Bufor na kolor
+                size_t i = 0;
+
+                while (*current != ',' && *current != '\0' && i < sizeof(color) - 1) {
+                    color[i++] = *current++;
+                }
+                color[i] = '\0';
+                *val = parse_color(color);
+                if (*val == 0xFFFF) { // Nieznany kolor
+                    va_end(args);
+                    return false;
+                }
+                break;
+            }
+        }
+
+        // Przejdź do następnego pola, jeśli jest przecinek
+        if (*current == ',') {
+            current++;
+        }
+    }
+
+    va_end(args);
+    return (*pattern == '\0'); // Upewnij się, że przetworzono cały wzorzec
+}
+
+
+
+
 //==========================OBSŁUGA KOMEND================================
 
 static void executeONK(Receive_Frame *frame)
 {
-
-	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Wykonanie ONK z danymi: %s\n ", frame->data);
 	uint8_t x = 0, y = 0, r = 0, filling = 0;
 	uint16_t color = 0;
+    if (!parse_parameters(frame->data, "uuuuh", &x, &y, &r, &filling, &color))
+    {
+        prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Blad parsowania danych: %s\n", frame->data);
+        return;
+    }
+	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Wykonanie ONK z danymi: %s\n ", frame->data);
 	lcd_init();
 	switch(filling)
 	{
@@ -47,9 +119,14 @@ static void executeONK(Receive_Frame *frame)
 }
 static void executeONP(Receive_Frame *frame)
 {
-	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Wykonanie ONP z danymi: %s\n ", frame->data);
 	uint8_t x = 0, y = 0, width = 0, height = 0, filling = 0;
 	uint16_t color = 0;
+	if (!parse_parameters(frame->data, "uuuuus", &x, &y, &width, &height, &filling, &color)) {
+		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "Blad parsowania danych: %s", frame->data);
+		return;
+	}
+
+	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "Wykonanie ONP z danymi: %s", frame->data);
 	lcd_init();
 	switch(filling)
 	{
@@ -66,9 +143,14 @@ static void executeONP(Receive_Frame *frame)
 }
 static void executeONT(Receive_Frame *frame)
 {
-	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Wykonanie ONT z danymi: %s\n ", frame->data);
 	uint8_t x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0, filling = 0;
 	uint16_t color = 0;
+	if (!parse_parameters(frame->data, "uuuuuus", &x1, &y1, &x2, &y2, &x3, &y3, &filling, &color))
+	{
+		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Blad parsowania danych: %s\n", frame->data);
+		return;
+	}
+	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Wykonanie ONT z danymi: %s\n ", frame->data);
 	lcd_init();
 	switch(filling)
 	{
@@ -84,22 +166,30 @@ static void executeONT(Receive_Frame *frame)
 }
 static void executeONN(Receive_Frame *frame)
 {
-	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Wykonanie ONN z danymi: %s\n ", frame->data);
-
 	const wchar_t text[512];
-	uint8_t x1 = 0, x2 = 0, fontSize = 0;
+	uint8_t x = 0, y = 0, fontSize = 0;
 	uint16_t color = 0;
+	if (!parse_parameters(frame->data, "uuus", &x, &y, &fontSize,  &color)) {
+		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Blad parsowania danych: %s\n", frame->data);
+		return;
+	}
+	const char *text_start = strchr(frame->data, ',');
+	if (text_start) {
+		text_start = strchr(text_start + 1, ','); // Znajdź początek tekstu
+		mbstowcs(text, text_start + 1, 512); // Konwersja tekstu na `wchar_t`
+		}
+	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Wykonanie ONN z danymi: %s\n ", frame->data);
 	lcd_init();
 	switch(fontSize)
 	{
 	case 1:
-		hagl_put_text(text, x1, x2, color, font5x7); //fontSize zmien
+		hagl_put_text(text, x, y, color, font5x7); //fontSize zmien
 		break;
 	case 2:
-		hagl_put_text(text, x1, x2, color, font5x8); //fontSize zmien
+		hagl_put_text(text, x, y, color, font5x8); //fontSize zmien
 		break;
 	case 3:
-		hagl_put_text(text, x1, x2, color, font6x9); //fontSize zmien
+		hagl_put_text(text, x, x, color, font6x9); //fontSize zmien
 		break;
 	}
 	lcd_copy();
@@ -109,8 +199,12 @@ static void executeONN(Receive_Frame *frame)
 }
 static void executeOFF(Receive_Frame *frame)
 {
-	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Wykonanie OFF z danymi: %s\n ", frame->data);
 	uint8_t state = 0;
+	if (!parse_parameters(frame->data, "u", &state)) {
+		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Blad parsowania danych: %s\n", frame->data);
+		return;
+	}
+	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Wykonanie OFF z danymi: %s\n ", frame->data);
 	switch(state)
 	{
 	case 0:
