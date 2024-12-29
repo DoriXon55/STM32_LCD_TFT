@@ -1,9 +1,8 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file           : main.h
-  * @brief          : Header for main.c file.
-  *                   This file contains the common defines of the application.
+  * @file    stm32l4xx_it.h
+  * @brief   This file contains the headers of the interrupt handlers.
   ******************************************************************************
   * @attention
   *
@@ -19,15 +18,12 @@
 /* USER CODE END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __MAIN_H
-#define __MAIN_H
+#ifndef __STM32L4xx_IT_H
+#define __STM32L4xx_IT_H
 
 #ifdef __cplusplus
-extern "C" {
+ extern "C" {
 #endif
-
-/* Includes ------------------------------------------------------------------*/
-#include "stm32l4xx_hal.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -50,32 +46,22 @@ extern "C" {
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
-void Error_Handler(void);
-
+void NMI_Handler(void);
+void HardFault_Handler(void);
+void MemManage_Handler(void);
+void BusFault_Handler(void);
+void UsageFault_Handler(void);
+void SVC_Handler(void);
+void DebugMon_Handler(void);
+void PendSV_Handler(void);
+void SysTick_Handler(void);
+void USART2_IRQHandler(void);
 /* USER CODE BEGIN EFP */
-void delay(uint32_t delayMs);
+
 /* USER CODE END EFP */
-
-/* Private defines -----------------------------------------------------------*/
-#define DIN_Pin GPIO_PIN_3
-#define DIN_GPIO_Port GPIOC
-#define BL_Pin GPIO_PIN_1
-#define BL_GPIO_Port GPIOB
-#define RST_Pin GPIO_PIN_2
-#define RST_GPIO_Port GPIOB
-#define CLK_Pin GPIO_PIN_10
-#define CLK_GPIO_Port GPIOB
-#define DC_Pin GPIO_PIN_11
-#define DC_GPIO_Port GPIOB
-#define CS_Pin GPIO_PIN_12
-#define CS_GPIO_Port GPIOB
-
-/* USER CODE BEGIN Private defines */
-
-/* USER CODE END Private defines */
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __MAIN_H */
+#endif /* __STM32L4xx_IT_H */

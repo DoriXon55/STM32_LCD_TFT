@@ -21,7 +21,7 @@
 #include "spi.h"
 #include "usart.h"
 #include "gpio.h"
-
+#include <stdbool.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "spi.h"
@@ -113,6 +113,7 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
+
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_SPI2_Init();
@@ -126,70 +127,72 @@ int main(void)
   {
     /* USER CODE END WHILE */
 	  if (USART_kbhit()) {                // Sprawdzamy, czy jest dostępny nowy znak
-	  	          received_char = USART_getchar();   // Pobieramy znak z bufora odbiorczego
+	          received_char = USART_getchar();   // Pobieramy znak z bufora odbiorczego
 
-	  	          if (received_char == '~') {    // Rozpoczęcie nowej ramki
-	  	              if (!in_frame) {
-	  	                  USART_fsend("Znaleziono poczatek ramki...\r\n");
-	  	                  in_frame = true;
-	  	                  bx_index = 0;           // Resetujemy indeks bufora
-	  	                  escape_detected = false; // Resetujemy flagę escape
-	  	              } else {
-	  	                  reset_frame_state();
-	  	              }
-	  	          } else if (received_char == '`') {    // Koniec ramki
-	  	              if (in_frame) {
-	  	                  USART_fsend("Koniec odbioru, nastepuje sprawdzanie ramki...\r\n");
-	  	                  // Przetwarzanie odebranej ramki (np. wywołanie funkcji lub ustawienie flagi)
-	  	                  if (decodeFrame(bx,&ramka, bx_index)) {
-	  	                      USART_fsend("SUKCES!\r\n");
-	  	                      USART_fsend("%d\r\n", bx_index);
-	  	                      handleCommand(&ramka);
-	  	                  } else {
-	  	                      USART_fsend("BŁĄD: Dekodowanie ramki nie powiodło się\r\n");
-	  	                  }
+	          if (received_char == '~') {    // Rozpoczęcie nowej ramki
+	              if (!in_frame) {
+	                  USART_fsend("Znaleziono poczatek ramki...\r\n");
+	                  in_frame = true;
+	                  bx_index = 0;           // Resetujemy indeks bufora
+	                  escape_detected = false; // Resetujemy flagę escape
+	              } else {
+	                  reset_frame_state();
+	              }
+	          } else if (received_char == '`') {    // Koniec ramki
+	              if (in_frame) {
+	                  USART_fsend("Koniec odbioru, nastepuje sprawdzanie ramki...\r\n");
+	                  // Przetwarzanie odebranej ramki (np. wywołanie funkcji lub ustawienie flagi)
+	                  if (decodeFrame(bx,&ramka, bx_index)) {
+	                      USART_fsend("SUKCES!\r\n");
+	                      USART_fsend("%d\r\n", bx_index);
+	                      handleCommand(&ramka);
+	                  } else {
+	                      USART_fsend("BŁĄD: Dekodowanie ramki nie powiodło się\r\n");
+	                  }
 
-	  	                  // Resetujemy stany po przetworzeniu ramki
-	  	                  reset_frame_state();
-	  	              } else {
-	  	                  // Jeśli ramka się kończy, ale nie została rozpoczęta
-	  	                  USART_fsend("BŁĄD: Zakonczenie ramki bez rozpoczecia\r\n");
-	  	                  reset_frame_state();
-	  	              }
-	  	          } else if (in_frame) {
-	  	              // Jesteśmy w ramce i przetwarzamy znaki
-	  	              if (escape_detected) {
-	  	                  // Jeśli wykryto escape char, sprawdzamy następny znak
-	  	                  if (received_char == '^') {
-	  	                      bx[bx_index++] = '~'; // '~' było zakodowane jako '}^'
-	  	                  } else if (received_char == ']') {
-	  	                      bx[bx_index++] = '}'; // '}' było zakodowane jako '}]'
-	  	                  } else if (received_char == '&') {
-	  	                      bx[bx_index++] = '`'; // '`' było zakodowane jako '}&'
-	  	                  } else {
-	  	                      // Nieprawidłowy znak po '}', resetujemy
-	  	                      USART_fsend("BŁĄD: Nieprawidłowy escape sequence\r\n");
-	  	                      reset_frame_state();
-	  	                  }
-	  	                  escape_detected = false; // Resetujemy flagę escape
-	  	              } else if (received_char == '}') {
-	  	                  escape_detected = true; // Wykryto znak escape, czekamy na następny
-	  	              } else {
-	  	                  // Normalny znak w ramce, zapisujemy do bx
-	  	                  if (bx_index < sizeof(bx)) {
-	  	                      bx[bx_index++] = received_char;
-	  	                  } else {
-	  	                      // kontrola przepełnienia
-	  	                      reset_frame_state();
-	  	                  }
-	  	              }
-	  	          } else {
-	  	              // Ignorujemy znaki poza ramką, ale resetujemy dla bezpieczeństwa
-	  	              //USART_fsend("BŁĄD: Znak poza ramką\r\n");
-	  	              //TODO bujnowski moze sie przyjebac ze jest reset co pętle
-	  	              reset_frame_state();
-	  	          }
-	  	      }
+	                  // Resetujemy stany po przetworzeniu ramki
+	                  reset_frame_state();
+	              } else {
+	                  // Jeśli ramka się kończy, ale nie została rozpoczęta
+	                  USART_fsend("BŁĄD: Zakonczenie ramki bez rozpoczecia\r\n");
+	                  reset_frame_state();
+	              }
+	          } else if (in_frame) {
+	              // Jesteśmy w ramce i przetwarzamy znaki
+	              if (escape_detected) {
+	                  // Jeśli wykryto escape char, sprawdzamy następny znak
+	                  if (received_char == '^') {
+	                      bx[bx_index++] = '~'; // '~' było zakodowane jako '}^'
+	                  } else if (received_char == ']') {
+	                      bx[bx_index++] = '}'; // '}' było zakodowane jako '}]'
+	                  } else if (received_char == '&') {
+	                      bx[bx_index++] = '`'; // '`' było zakodowane jako '}&'
+	                  } else {
+	                      // Nieprawidłowy znak po '}', resetujemy
+	                      USART_fsend("BŁĄD: Nieprawidłowy escape sequence\r\n");
+	                      reset_frame_state();
+	                  }
+	                  escape_detected = false; // Resetujemy flagę escape
+	              } else if (received_char == '}') {
+	                  escape_detected = true; // Wykryto znak escape, czekamy na następny
+	              } else {
+	                  // Normalny znak w ramce, zapisujemy do bx
+	                  if (bx_index < sizeof(bx)) {
+	                      bx[bx_index++] = received_char;
+	                  } else {
+	                      // kontrola przepełnienia
+	                      reset_frame_state();
+	                  }
+	              }
+	          } else {
+	              // Ignorujemy znaki poza ramką, ale resetujemy dla bezpieczeństwa
+	              //USART_fsend("BŁĄD: Znak poza ramką\r\n");
+	              //TODO bujnowski moze sie przyjebac ze jest reset co pętle
+	              reset_frame_state();
+	          }
+	      }
+	 	       //HAL_Delay(250);
+	 	       //HAL_GPIO_TogglePin(GPIOA,GPIO_PIN_5);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

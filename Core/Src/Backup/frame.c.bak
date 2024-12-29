@@ -166,7 +166,7 @@ static void executeONT(Receive_Frame *frame)
 }
 static void executeONN(Receive_Frame *frame)
 {
-	wchar_t text[512];
+	const wchar_t text[512];
 	uint8_t x = 0, y = 0, fontSize = 0;
 	uint16_t color = 0;
 	if (!parse_parameters(frame->data, "uuus", &x, &y, &fontSize,  &color)) {
