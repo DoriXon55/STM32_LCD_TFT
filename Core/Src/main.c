@@ -57,9 +57,9 @@ extern volatile int USART_RX_Busy;
 extern volatile int USART_RX_Empty;
 extern volatile int USART_TX_Busy;
 volatile uint32_t tick;
-char bx[128];
+uint8_t bx[128];
 bool escape_detected = false;
-uint8_t bx_index = 0;
+char bx_index = 0;
 bool in_frame = false;
 char received_char;
 Receive_Frame ramka;
@@ -117,11 +117,11 @@ int main(void)
   MX_USART2_UART_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
-  HAL_UART_Receive_IT(&huart2,&USART_RxBuf[0],1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  //TODO umieścić resetowanie wyświetlacza po wyktyciu np. dwóch ramek albo kolejnej ramki.
   while (1)
   {
     /* USER CODE END WHILE */
@@ -185,8 +185,7 @@ int main(void)
 	  	              }
 	  	          } else {
 	  	              // Ignorujemy znaki poza ramką, ale resetujemy dla bezpieczeństwa
-	  	              //USART_fsend("BŁĄD: Znak poza ramką\r\n");
-	  	              //TODO bujnowski moze sie przyjebac ze jest reset co pętle
+	  	              //nie wiem czy reset co pętle będzie potrzebny
 	  	              reset_frame_state();
 	  	          }
 	  	      }

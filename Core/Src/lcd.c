@@ -78,6 +78,8 @@ void lcd_copy(void)
 	HAL_SPI_Transmit(&hspi2, (uint8_t*)frame_buffer, sizeof(frame_buffer), HAL_MAX_DELAY);
 	HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_SET);
 }
+
+//TODO zrobic zarządzanie podświetleniem
 void lcd_init(void)
 {
 	  int i;

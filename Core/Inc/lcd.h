@@ -35,14 +35,35 @@
 #define LCD_HEIGHT	128
 
 //====================DEFINICJA PRZYKŁADOWYCH KOLORÓW=============
-#define BLACK			0x0000
-#define RED				0x00f8
-#define GREEN			0xe007
-#define BLUE			0x1f00
-#define YELLOW			0xe0ff
-#define MAGENTA			0x1ff8
-#define CYAN			0xff07
-#define WHITE			0xffff
+typedef enum{
+	BLACK = 0x0000,
+	RED = 0x00f8,
+	GREEN = 0xE007,
+	BLUE = 0x1F00,
+	YELLOW = 0xE0FF,
+	MAGENTA = 0x1FF8,
+	CYAN = 0xFF07,
+	WHITE = 0xFFFF
+}Color_t;
+
+// Struktura do mapowania nazw kolorów na wartości
+typedef struct {
+    const char *name;
+    Color_t value;
+} ColorMap;
+
+// Tablica mapowania kolorów
+static const ColorMap color_map[] = {
+    {"RED", RED},
+    {"GREEN", GREEN},
+    {"BLUE", BLUE},
+    {"YELLOW", YELLOW},
+    {"MAGENTA", MAGENTA},
+    {"CYAN", CYAN},
+    {"WHITE", WHITE},
+    {"BLACK", BLACK}
+};
+
 
 
 //=================PRZESUNIĘCIE PONIEWAŻ STEROWNIK 162x132px OBSŁUGUJE===========

@@ -21,6 +21,8 @@
 #include "usart.h"
 #include "USART_ringbuffer.h"
 /* USER CODE BEGIN 0 */
+extern ring_buffer rxRingBuffer;
+extern ring_buffer txRingBuffer;
 extern uint8_t USART_RxBuf[];
 extern uint8_t USART_TxBuf[];
 extern volatile int USART_TX_Empty;
@@ -31,19 +33,19 @@ extern volatile int USART_RX_Busy;
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
    if(huart==&huart2){
-	   if(USART_TX_Empty!=USART_TX_Busy){
-		   uint8_t tmp = USART_TxBuf[USART_TX_Busy];
-		   USART_TX_Busy++;
-		   if(USART_TX_Busy >= USART_TXBUF_LEN) USART_TX_Busy=0;
+	   if(txRingBuffer.writeIndex!=txRingBuffer.readIndex){
+		   uint8_t tmp = USART_TxBuf[txRingBuffer.readIndex];
+		   txRingBuffer.readIndex++;
+		   if(txRingBuffer.readIndex >= TX_BUFFER_SIZE) txRingBuffer.readIndex=0;
 		   HAL_UART_Transmit_IT(&huart2, &tmp, 1);
 	   }
    }
 }
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 	 if(huart==&huart2){
-		 USART_RX_Empty++;
-		 if(USART_RX_Empty >= USART_RXBUF_LEN) USART_RX_Empty=0;
-		 HAL_UART_Receive_IT(&huart2,&USART_RxBuf[USART_RX_Empty],1);
+		 rxRingBuffer.writeIndex++;
+		 if(rxRingBuffer.writeIndex >= RX_BUFFER_SIZE) rxRingBuffer.writeIndex=0;
+		 HAL_UART_Receive_IT(&huart2,&USART_RxBuf[rxRingBuffer.writeIndex],1);
 
 	 }
 }
@@ -78,7 +80,9 @@ void MX_USART2_UART_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USART2_Init 2 */
-
+  ring_buffer_setup(&rxRingBuffer, USART_RxBuf, RX_BUFFER_SIZE);
+  ring_buffer_setup(&txRingBuffer, USART_TxBuf, TX_BUFFER_SIZE);
+  HAL_UART_Receive_IT(&huart2,&USART_RxBuf[0],1);
   /* USER CODE END USART2_Init 2 */
 
 }

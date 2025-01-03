@@ -28,15 +28,13 @@ extern volatile int USART_RX_Busy;
 
 
 //=========================FUNKCJE POMOCNICZE=============================
-static uint16_t parse_color(const char *color_name) {
-    if (strcmp(color_name, "RED") == 0) return RED;
-    if (strcmp(color_name, "GREEN") == 0) return GREEN;
-    if (strcmp(color_name, "BLUE") == 0) return BLUE;
-    if (strcmp(color_name, "YELLOW") == 0) return YELLOW;
-    if (strcmp(color_name, "MAGENTA") == 0) return MAGENTA;
-    if (strcmp(color_name, "CYAN") == 0) return CYAN;
-    if (strcmp(color_name, "WHITE") == 0) return WHITE;
-    if (strcmp(color_name, "BLACK") == 0) return BLACK;
+//TODO do sprawdzenia
+static Color_t parse_color(const char *color_name) {
+    for (size_t i = 0; i < sizeof(color_map) / sizeof(ColorMap); ++i) {
+        if (strncmp(color_name, color_map[i].name, strlen(color_map[i].name)) == 0) {
+            return color_map[i].value;
+        }
+    }
     return 0xFFFF; // Nieznany kolor
 }
 
@@ -243,6 +241,7 @@ bool parse_coordinates(const char *data, int *x, int *y)
 	    return true;
 }
 //=======================OBSŁUGA RAMKI=========================
+//TODO zmienic byteStuffing na wersje z ramki
 size_t byteStuffing(uint8_t *input, size_t input_len, uint8_t *output) {
     size_t j = 0;
     for (size_t i = 0; i < input_len; i++) {
@@ -327,11 +326,11 @@ bool decodeFrame(char *bx, Receive_Frame *frame, uint8_t len) {
             k += data_len;
             memcpy(incCrc, &bx[k], 2);
             calculate_crc16((uint8_t *)frame, k, ownCrc);
-            for (int l = 0; l < 2; l++) {
-                if(ownCrc[l] != incCrc[l]) {
+
+                if(ownCrc[0] != incCrc[0] || ownCrc[1] != incCrc[1]) {
                     return false;
                 }
-            }
+
             return true; // crc zosta?o pomy?lnie por?wnanie
         }
     return false; // ramka niepoprawna
@@ -374,13 +373,3 @@ void handleCommand(Receive_Frame *frame)
 	    USART_fsend("\r\n");
 }
 
-/*
-void sendBack(Frame *frame, Receive_Frame *receive_frame, char command){
-
-	//TODO nadpisać rameczkę z komunikatem powrotnym
-	frame->command = "BCK";
-	frame->data = command + " " + receive_frame->data; //-> z wywołanego błędu
-
-	USART_fsend("~skibidi~", frame->command, frame->data);
-}
-*/

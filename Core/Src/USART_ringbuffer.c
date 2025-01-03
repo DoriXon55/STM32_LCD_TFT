@@ -6,39 +6,34 @@
  */
 #include "USART_ringbuffer.h"
 #include "main.h"
-uint8_t USART_TxBuf[USART_TXBUF_LEN];
-uint8_t USART_RxBuf[USART_RXBUF_LEN];
+ring_buffer rxRingBuffer;
+ring_buffer txRingBuffer;
+uint8_t USART_TxBuf[TX_BUFFER_SIZE];
+uint8_t USART_RxBuf[RX_BUFFER_SIZE];
 
-volatile int USART_TX_Empty = 0; // wskaźnik do zapisania TX
-volatile int USART_TX_Busy = 0; // wskaźnik do odczytu TX
-volatile int USART_RX_Empty = 0; // wskaźnik do zapisania RX
-volatile int USART_RX_Busy = 0; // wskaźnik do odczytu RX
+void ring_buffer_setup(ring_buffer* rb, uint8_t* buffer, uint32_t size)
+{
+	rb->buffer = buffer;
+	rb->readIndex = 0;
+	rb->writeIndex = 0;
+	rb->mask = size - 1; // zakładając, że zmienna size jest potęgą 2
+}
 
 uint8_t USART_kbhit(){
-	if(USART_RX_Empty == USART_RX_Busy){
+	if(rxRingBuffer.writeIndex == rxRingBuffer.readIndex){
 		return 0;
 	}else{
 		return 1;
 	}
 }
 
-int16_t USART_getchar(){
-	if(USART_RX_Empty != USART_RX_Busy){
-		int16_t tmp = USART_RxBuf[USART_RX_Busy]; // odczyt znaku
-		 USART_RX_Busy++;
-		 if(USART_RX_Busy >= USART_RXBUF_LEN)
-		 {
-			 if(USART_RXBUF_LEN % 2 == 0)
-			 {
-				 USART_RX_Busy = (USART_RX_Busy + 1) & USART_RXBUF_MASK;
-			 } else {
-				 USART_RX_Busy = 0;
-			 }
-		 }
-		 return tmp;
-	} else {
-		return -1; //bufor pusty
-	}
+int16_t USART_getchar() {
+    if (rxRingBuffer.writeIndex != rxRingBuffer.readIndex) {
+        int16_t tmp = USART_RxBuf[rxRingBuffer.readIndex];
+        rxRingBuffer.readIndex = (rxRingBuffer.readIndex + 1) % rxRingBuffer.mask;
+        return tmp;
+    }
+    return -1; // Buffer empty
 }
 
 uint8_t USART_getline(char *buf){
@@ -66,45 +61,64 @@ uint8_t USART_getline(char *buf){
 	}
 	return 0;
 }
+void USART_send(uint8_t message[]){
 
+    uint16_t i,idx = txRingBuffer.writeIndex;
+
+
+    for(i=0; message[i] != '\0'; i++){ // przenosimy tekst z wywołania funkcji USART_send do tablicy BUF_TX[]
+
+            USART_TxBuf[idx] = message[i];
+            idx++;
+            if(idx >= TX_BUFFER_SIZE) idx = 0;
+            if(idx == txRingBuffer.readIndex) txRingBuffer.readIndex++;
+            //if(busy_TX >= sizeof(BUF_TX)) busy_TX=0;
+            if(txRingBuffer.readIndex >= TX_BUFFER_SIZE) txRingBuffer.readIndex=0;
+
+    } // cały tekst ze zmienne message[] znajduje się już teraz w BUF_TX[]
+
+        __disable_irq(); //wyłączamy przerwania, bo poniżej kilka linii do zrobienia
+
+        if (txRingBuffer.readIndex == txRingBuffer.writeIndex)
+        {
+            txRingBuffer.writeIndex = idx;
+            uint8_t tmp = USART_TxBuf[txRingBuffer.readIndex];
+            txRingBuffer.readIndex++;
+            if(txRingBuffer.readIndex >= TX_BUFFER_SIZE) txRingBuffer.readIndex = 0;
+            HAL_UART_Transmit_IT(&huart2, &tmp, 1);
+
+            //HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+        }
+        else
+        {
+        	txRingBuffer.readIndex = idx;
+        }
+
+        __enable_irq(); //ponownie aktywujemy przerwania
+}
 void USART_fsend(char* format,...){
-	char tmp_rs[256];
+	char tmp_rs[128];
 	int i;
-	volatile int index;
-	//wstawianie dodatkowych argumentów do formatu.
+	volatile int idx;
 	va_list arglist;
-	va_start(arglist, format);
-	vsprintf(tmp_rs, format, arglist); //tworzenie ciągu danych do wysłania. Formatuje tekst z argumentów.
-	va_end(arglist);
-	index = USART_TX_Empty;
-
-	// przechodzi przez każdy element tmp_rs i zapisuje go do TxBuf
-	for(i = 0;i < strlen(tmp_rs); i++){
-		USART_TxBuf[index] = tmp_rs[i];
-		index++;
-		if(index >= USART_TXBUF_LEN)index=0;
-	}
-
-	__disable_irq(); //zapobieganie sekcji krytycznej
-
-	if((USART_TX_Empty == USART_TX_Busy)&&(__HAL_UART_GET_FLAG(&huart2, UART_FLAG_TXE) == SET)) //sprawdza czy bufor nie pusty i czy transmisja ready
-	{
-		USART_TX_Empty = index;
-		uint8_t tmp = USART_TxBuf[USART_TX_Busy]; //zapisanie bajtu
-		USART_TX_Busy++;
-		if(USART_TX_Busy >= USART_TXBUF_LEN)
-		{
-			 if(USART_TXBUF_LEN % 2 == 0)
-			 {
-				 USART_TX_Busy = (USART_TX_Busy + 1) & USART_TXBUF_MASK;
-			 } else {
-				 USART_TX_Busy = 0;
-			 }
-		}
-		HAL_UART_Transmit_IT(&huart2, &tmp, 1); //wysłąnie bajtu z bufora
-	}else{
-		USART_TX_Empty = index;
-	}
-
-	__enable_irq(); //włączenie przerwań
+	  va_start(arglist,format);
+	  vsprintf(tmp_rs,format,arglist);
+	  va_end(arglist);
+	  idx=txRingBuffer.writeIndex;
+	  for(i=0;i<strlen(tmp_rs);i++){
+		  USART_TxBuf[idx]=tmp_rs[i];
+		  idx++;
+		  if(idx >= TX_BUFFER_SIZE)idx=0;
+	  }
+	  __disable_irq();//wyłączamy przerwania
+	  if((txRingBuffer.writeIndex==txRingBuffer.readIndex)&&(__HAL_UART_GET_FLAG(&huart2,UART_FLAG_TXE)==SET)){//sprawdzic dodatkowo zajetosc bufora nadajnika
+		  txRingBuffer.writeIndex=idx;
+		  uint8_t tmp=USART_TxBuf[txRingBuffer.readIndex];
+		  txRingBuffer.readIndex++;
+		  if(txRingBuffer.readIndex >= TX_BUFFER_SIZE)txRingBuffer.readIndex=0;
+		  HAL_UART_Transmit_IT(&huart2, &tmp, 1);
+	  }else{
+		  txRingBuffer.writeIndex=idx;
+	  }
+	  __enable_irq();
 }

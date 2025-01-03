@@ -17,12 +17,15 @@
 #include <stdint.h>
 
 //==============================DEFINICJE WIELKOŚCI BUFORA KOŁOWEGO=============================
-#define USART_TXBUF_LEN 2048
-#define USART_RXBUF_LEN 256
-#define USART_TXBUF_MASK (USART_TXBUF_LEN - 1)
-#define USART_RXBUF_MASK (USART_RXBUF_LEN - 1)
+#define TX_BUFFER_SIZE 2048
+#define RX_BUFFER_SIZE 256
 
-
+typedef struct {
+	uint8_t* buffer;
+	uint32_t readIndex;
+	uint32_t writeIndex;
+	uint32_t mask;
+}ring_buffer;
 /*
  * Sprawdza czy w buforze odbiorczym znajdują się dane
  * Zwraca 1 jeśli bufor zawiera dane do odczytu
@@ -56,6 +59,9 @@ uint8_t USART_getline(char *buf);
  */
 void USART_fsend(char* format, ...);
 
-
+/*
+ * Utworzenie instancji bufora
+ */
+void ring_buffer_setup(ring_buffer* rb, uint8_t* buffer, uint32_t size);
 
 #endif /* INC_USART_RINGBUFFER_H_ */
