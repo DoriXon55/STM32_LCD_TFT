@@ -93,6 +93,7 @@ static bool parse_parameters(const char *data, const char *pattern, ...) {
 
 //==========================OBSŁUGA KOMEND================================
 
+//TODO nie dzialla
 static void executeONK(Receive_Frame *frame)
 {
 	uint8_t x = 0, y = 0, r = 0, filling = 0;
@@ -115,6 +116,8 @@ static void executeONK(Receive_Frame *frame)
 	}
 	lcd_copy();
 }
+
+
 static void executeONP(Receive_Frame *frame)
 {
 	uint8_t x = 0, y = 0, width = 0, height = 0, filling = 0;
@@ -139,11 +142,14 @@ static void executeONP(Receive_Frame *frame)
 
 
 }
+
+
+//TODO nie dziala
 static void executeONT(Receive_Frame *frame)
 {
 	uint8_t x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0, filling = 0;
 	uint16_t color = 0;
-	if (!parse_parameters(frame->data, "uuuuuus", &x1, &y1, &x2, &y2, &x3, &y3, &filling, &color))
+	if (!parse_parameters(frame->data, "uuuuuuus", &x1, &y1, &x2, &y2, &x3, &y3, &filling, &color))
 	{
 		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Blad parsowania danych: %s\n", frame->data);
 		return;
@@ -162,10 +168,12 @@ static void executeONT(Receive_Frame *frame)
 	lcd_copy();
 
 }
+
+//TODO nie dziala, dodac obsluge przewijania tekstu
 static void executeONN(Receive_Frame *frame)
 {
 	wchar_t text[512];
-	uint8_t x = 0, y = 0, fontSize = 0;
+	uint8_t x = 0, y = 0, fontSize = 0, speed = 0; // TODO dodac obsluge animacji tekstu
 	uint16_t color = 0;
 	if (!parse_parameters(frame->data, "uuus", &x, &y, &fontSize,  &color)) {
 		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " Blad parsowania danych: %s\n", frame->data);
@@ -310,12 +318,10 @@ void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const c
 }
 
 
-bool decodeFrame(char *bx, Receive_Frame *frame, uint8_t len) {
+bool decodeFrame(uint8_t *bx, Receive_Frame *frame, uint8_t len) {
     char ownCrc[2];
     char incCrc[2];
-    //USART_fsend("\r\ndlugosc: %d\r\n",len);
         if(len >= MIN_DECODED_FRAME_LEN && len <= MAX_FRAME_LEN) {
-            //USART_fsend("bede zapisywac ramke w strukturze\r\n");
             uint8_t k = 0;
             frame->receiver = bx[k++];
             frame->sender = bx[k++];
@@ -326,14 +332,12 @@ bool decodeFrame(char *bx, Receive_Frame *frame, uint8_t len) {
             k += data_len;
             memcpy(incCrc, &bx[k], 2);
             calculate_crc16((uint8_t *)frame, k, ownCrc);
-
-                if(ownCrc[0] != incCrc[0] || ownCrc[1] != incCrc[1]) {
-                    return false;
-                }
-
-            return true; // crc zosta?o pomy?lnie por?wnanie
+            if(ownCrc[0] != incCrc[0] || ownCrc[1] != incCrc[1]) {
+            	return false;
+            }
+            return true;
         }
-    return false; // ramka niepoprawna
+        return false;
 }
 
 

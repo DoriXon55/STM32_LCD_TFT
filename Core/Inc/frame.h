@@ -33,9 +33,9 @@
 #define PC_ADDR	'g'
 
 //==============================DEFINICJE WIELKOŚCI=======================================
-#define MAX_DATA_SIZE 256
-#define MIN_FRAME_LEN 9 //TODO zmienić
-#define MAX_FRAME_LEN 512// TODO zmienić
+#define MAX_DATA_SIZE 128
+#define MIN_FRAME_LEN 10
+#define MAX_FRAME_LEN 270
 #define COMMAND_LENGTH 3
 #define RAW_FRAME_LEN 9
 #define MIN_DECODED_FRAME_LEN 7
@@ -88,7 +88,7 @@ typedef struct {
 void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const char *format, ...);
 size_t byteStuffing(uint8_t *input, size_t input_len, uint8_t *output);
 size_t byteUnstuffing(uint8_t *input, size_t input_len, uint8_t *output);
-bool decodeFrame(char *bx, Receive_Frame *frame, uint8_t len);
+bool decodeFrame(uint8_t *bx, Receive_Frame *frame, uint8_t len);
 void handleCommand(Receive_Frame *frame);
 
 

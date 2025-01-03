@@ -59,9 +59,9 @@ extern volatile int USART_TX_Busy;
 volatile uint32_t tick;
 uint8_t bx[128];
 bool escape_detected = false;
-char bx_index = 0;
+int bx_index = 0;
 bool in_frame = false;
-char received_char;
+uint8_t received_char;
 Receive_Frame ramka;
 /* USER CODE END PV */
 
