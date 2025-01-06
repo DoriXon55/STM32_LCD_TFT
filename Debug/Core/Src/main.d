@@ -28,8 +28,8 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart.h \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart_ex.h \
  ../Core/Inc/spi.h ../Core/Inc/main.h ../Core/Inc/usart.h \
- ../Core/Inc/gpio.h ../Core/Inc/lcd.h ../Core/Inc/USART_ringbuffer.h \
- ../Core/Inc/usart.h ../Core/Inc/frame.h \
+ ../Core/Inc/gpio.h ../Core/Inc/stm32l4xx_it.h ../Core/Inc/lcd.h \
+ ../Core/Inc/USART_ringbuffer.h ../Core/Inc/usart.h ../Core/Inc/frame.h \
  C:/Users/doria/STM32CubeIDE/workspace_1.16.1/MIKRO_PROJECT_FINAL/hagl/include/hagl.h \
  ../Core/Inc/hagl_hal.h \
  C:/Users/doria/STM32CubeIDE/workspace_1.16.1/MIKRO_PROJECT_FINAL/hagl/include/bitmap.h \
@@ -67,6 +67,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Core/Inc/main.h:
 ../Core/Inc/usart.h:
 ../Core/Inc/gpio.h:
+../Core/Inc/stm32l4xx_it.h:
 ../Core/Inc/lcd.h:
 ../Core/Inc/USART_ringbuffer.h:
 ../Core/Inc/usart.h:

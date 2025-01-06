@@ -21,7 +21,7 @@
 #include "spi.h"
 #include "usart.h"
 #include "gpio.h"
-
+#include "stm32l4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "spi.h"
@@ -57,12 +57,7 @@ extern volatile int USART_RX_Busy;
 extern volatile int USART_RX_Empty;
 extern volatile int USART_TX_Busy;
 volatile uint32_t tick;
-uint8_t bx[128];
-bool escape_detected = false;
-int bx_index = 0;
-bool in_frame = false;
-uint8_t received_char;
-Receive_Frame ramka;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -78,10 +73,12 @@ void delay(uint32_t delayMs){
 	uint32_t startTime = tick;
 	while(tick < (startTime+delayMs)); //niestety blokuje działanie programu ale na szczęście nie przerwań
 }
-void reset_frame_state() {
-    in_frame = false;
-    escape_detected = false;
-    bx_index = 0;
+void wait_for_frame(void)
+{
+	if (USART_kbhit()) {
+	        uint8_t received_char = USART_getchar();
+	        process_received_char(received_char);
+	 }
 }
 /* USER CODE END 0 */
 
@@ -117,6 +114,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
+  lcd_init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -125,71 +123,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	  if (USART_kbhit()) {                // Sprawdzamy, czy jest dostępny nowy znak
-	  	          received_char = USART_getchar();   // Pobieramy znak z bufora odbiorczego
-
-	  	          if (received_char == '~') {    // Rozpoczęcie nowej ramki
-	  	              if (!in_frame) {
-	  	                  USART_fsend("Znaleziono poczatek ramki...\r\n");
-	  	                  in_frame = true;
-	  	                  bx_index = 0;           // Resetujemy indeks bufora
-	  	                  escape_detected = false; // Resetujemy flagę escape
-	  	              } else {
-	  	                  reset_frame_state();
-	  	              }
-	  	          } else if (received_char == '`') {    // Koniec ramki
-	  	              if (in_frame) {
-	  	                  USART_fsend("Koniec odbioru, nastepuje sprawdzanie ramki...\r\n");
-	  	                  // Przetwarzanie odebranej ramki (np. wywołanie funkcji lub ustawienie flagi)
-	  	                  if (decodeFrame(bx,&ramka, bx_index)) {
-	  	                      USART_fsend("SUKCES!\r\n");
-	  	                      USART_fsend("%d\r\n", bx_index);
-	  	                      handleCommand(&ramka);
-	  	                  } else {
-	  	                      USART_fsend("BŁĄD: Dekodowanie ramki nie powiodło się\r\n");
-	  	                  }
-
-	  	                  // Resetujemy stany po przetworzeniu ramki
-	  	                  reset_frame_state();
-	  	              } else {
-	  	                  // Jeśli ramka się kończy, ale nie została rozpoczęta
-	  	                  USART_fsend("BŁĄD: Zakonczenie ramki bez rozpoczecia\r\n");
-	  	                  reset_frame_state();
-	  	              }
-	  	          } else if (in_frame) {
-	  	              // Jesteśmy w ramce i przetwarzamy znaki
-	  	              if (escape_detected) {
-	  	                  // Jeśli wykryto escape char, sprawdzamy następny znak
-	  	                  if (received_char == '^') {
-	  	                      bx[bx_index++] = '~'; // '~' było zakodowane jako '}^'
-	  	                  } else if (received_char == ']') {
-	  	                      bx[bx_index++] = '}'; // '}' było zakodowane jako '}]'
-	  	                  } else if (received_char == '&') {
-	  	                      bx[bx_index++] = '`'; // '`' było zakodowane jako '}&'
-	  	                  } else {
-	  	                      // Nieprawidłowy znak po '}', resetujemy
-	  	                      USART_fsend("BŁĄD: Nieprawidłowy escape sequence\r\n");
-	  	                      reset_frame_state();
-	  	                  }
-	  	                  escape_detected = false; // Resetujemy flagę escape
-	  	              } else if (received_char == '}') {
-	  	                  escape_detected = true; // Wykryto znak escape, czekamy na następny
-	  	              } else {
-	  	                  // Normalny znak w ramce, zapisujemy do bx
-	  	                  if (bx_index < sizeof(bx)) {
-	  	                      bx[bx_index++] = received_char;
-	  	                  } else {
-	  	                      // kontrola przepełnienia
-	  	                      reset_frame_state();
-	  	                  }
-	  	              }
-	  	          } else {
-	  	              // Ignorujemy znaki poza ramką, ale resetujemy dla bezpieczeństwa
-	  	              //nie wiem czy reset co pętle będzie potrzebny
-	  	              reset_frame_state();
-	  	          }
-	  	      }
-    /* USER CODE BEGIN 3 */
+	  wait_for_frame();
+	/* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
 }

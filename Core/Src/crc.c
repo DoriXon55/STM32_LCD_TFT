@@ -49,8 +49,8 @@ void calculate_crc16(uint8_t *data, size_t length, char crc_out[2]) {
         uint8_t table_index = (crc >> 8) ^ byte; // oblicz indeks tablicy
         crc = (crc << 8) ^ crc16_table[table_index]; // zaktualizuj crc uzywajac wartosci stablicowanej
     }
-    crc_out[0] = (char)((crc >> 8) & 0xFF); // bajt po lewej
-    crc_out[1] = (char)(crc & 0xFF);        // bajt po prawej
+    crc_out[0] = ((crc >> 8) & 0xFF); // bajt po lewej
+    crc_out[1] = (crc & 0xFF);        // bajt po prawej
 }
 uint16_t crc16_ccitt(const uint8_t *data, size_t length)
 {

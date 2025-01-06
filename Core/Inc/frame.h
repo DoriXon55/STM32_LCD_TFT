@@ -17,11 +17,6 @@
 #include <stdarg.h>
 
 //==============================DEFINICJE FLAG=======================================
-#define FLAG	   0x7E
-#define ESC        0x7D
-#define ESC_FLAG   0x5E
-#define ESC_ESC    0x5D
-
 
 #define FRAME_START '~'
 #define FRAME_END '`'
@@ -37,7 +32,6 @@
 #define MIN_FRAME_LEN 10
 #define MAX_FRAME_LEN 270
 #define COMMAND_LENGTH 3
-#define RAW_FRAME_LEN 9
 #define MIN_DECODED_FRAME_LEN 7
 
 
@@ -48,13 +42,6 @@
 #define COMMAND_ONT "ONT"//wyświetlanie trójkąta
 #define COMMAND_ONN "ONN"//wyświetlanie napisu
 #define COMMAND_OFF "OFF"//wyłączenie wyświetlacza
-
-//===================KOMENDY DO OBSŁUGI KOMUNIKATÓW ZWROTNYCH=======================
-#define COMMAND_WLEN "WLEN" //nieprawidłowa długość przeslanej komendy
-#define COMMAND_EMPTY "EMPTY" // pusta ramka (tzn. bez żadnej zawartości)
-#define COMMAND_WCRC "WCRC" // CRC nie jest zgodne
-#define COMMAND_WCMD "WCMD" //Nieprawidłowa komenda (tzn. nie ma takiej w spisie"
-
 
 //===================STRUKTURA DO TWORZENIA ORAZ WYSYŁANIA RAMKI====================
 typedef struct{
@@ -90,6 +77,7 @@ size_t byteStuffing(uint8_t *input, size_t input_len, uint8_t *output);
 size_t byteUnstuffing(uint8_t *input, size_t input_len, uint8_t *output);
 bool decodeFrame(uint8_t *bx, Receive_Frame *frame, uint8_t len);
 void handleCommand(Receive_Frame *frame);
+void process_received_char(uint8_t received_char);
 
 
 
