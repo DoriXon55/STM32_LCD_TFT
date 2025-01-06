@@ -71,6 +71,7 @@ typedef struct {
 } CommandEntry;
 
 
+
 //===================FUNCKJE DLA RAMEK======================================
 void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const char *format, ...);
 size_t byteStuffing(uint8_t *input, size_t input_len, uint8_t *output);
@@ -78,7 +79,6 @@ size_t byteUnstuffing(uint8_t *input, size_t input_len, uint8_t *output);
 bool decodeFrame(uint8_t *bx, Receive_Frame *frame, uint8_t len);
 void handleCommand(Receive_Frame *frame);
 void process_received_char(uint8_t received_char);
-
 
 
 

@@ -33,13 +33,14 @@ Receive_Frame ramka;
 
 //=========================FUNKCJE POMOCNICZE=============================
 //TODO do sprawdzenia
-static Color_t parse_color(const char *color_name) {
-    for (size_t i = 0; i < sizeof(color_map) / sizeof(ColorMap); ++i) {
-        if (strncmp(color_name, color_map[i].name, strlen(color_map[i].name)) == 0) {
-            return color_map[i].value;
+bool parse_color(const char* color_name, Color_t* color) {
+    for (int i = 0; i < sizeof(color_map) / sizeof(ColorMap); i++) {
+        if (strcmp(color_name, color_map[i].name) == 0) {
+            *color = color_map[i].value;
+            return true;
         }
     }
-    return 0xFFFF; // Nieznany kolor
+    return false;
 }
 
 static void reset_frame_state() {
@@ -65,53 +66,60 @@ static void parseCommandSwtich(char command)
 	}
 }
 */
+bool parse_parameters(const char* data, const char* format, ...) {
+    if (!data || !format) return false;
 
-static bool parse_parameters(const char *data, const char *pattern, ...) {
     va_list args;
-    va_start(args, pattern);
+    va_start(args, format);
 
-    const char *current = data;
-    while (*pattern && *current) {
-        switch (*pattern++) {
-            case 'u': { // uint8_t
-                uint8_t *val = va_arg(args, uint8_t *);
-                if (strncmp(current, "0x", 2) == 0) {
-                    *val = (uint8_t)strtoul(current, (char **)&current, 16);
-                } else {
-                    *val = (uint8_t)strtoul(current, (char **)&current, 10);
+    const char* ptr = data;
+    int value = 0;
+    bool reading_number = false;
+    int param_index = 0;
+    char color_name[32] = {0};
+    int color_index = 0;
+
+    while (*ptr != '\0') {
+        if (*ptr >= '0' && *ptr <= '9') {
+            value = (value * 10) + (*ptr - '0');
+            reading_number = true;
+        }
+        else if (*ptr == ',' || *(ptr + 1) == '\0') {
+            if (reading_number) {
+                if (format[param_index] == 'u') {
+                    uint8_t* param = va_arg(args, uint8_t*);
+                    *param = (uint8_t)value;
                 }
-                break;
+                value = 0;
+                reading_number = false;
+                param_index++;
             }
-            case 's': { // Kolor (string -> uint16_t)
-                uint16_t *val = va_arg(args, uint16_t *);
-                char color[16]; // Bufor na kolor
-                size_t i = 0;
-
-                while (*current != ',' && *current != '\0' && i < sizeof(color) - 1) {
-                    color[i++] = *current++;
+            else if (color_index > 0) {
+                color_name[color_index] = '\0';
+                if (format[param_index] == 's') {
+                    uint16_t* color_value = va_arg(args, uint16_t*);
+                    if (!parse_color(color_name, color_value)) {
+                        va_end(args);
+                        return false;
+                    }
                 }
-                color[i] = '\0';
-                *val = parse_color(color);
-                if (*val == 0xFFFF) { // Nieznany kolor
-                    va_end(args);
-                    return false;
-                }
-                break;
+                color_index = 0;
+                param_index++;
             }
         }
-
-        // Przejdź do następnego pola, jeśli jest przecinek
-        if (*current == ',') {
-            current++;
+        else if (*ptr >= 'A' && *ptr <= 'Z') {
+            color_name[color_index++] = *ptr;
+            if (color_index >= sizeof(color_name) - 1) {
+                va_end(args);
+                return false;
+            }
         }
+        ptr++;
     }
 
     va_end(args);
-    return (*pattern == '\0'); // Upewnij się, że przetworzono cały wzorzec
+    return true;
 }
-
-
-
 
 //==========================OBSŁUGA KOMEND================================
 
@@ -119,8 +127,8 @@ static bool parse_parameters(const char *data, const char *pattern, ...) {
 static void executeONK(Receive_Frame *frame)
 {
 	uint8_t x = 0, y = 0, r = 0, filling = 0;
-	uint16_t color = 0;
-    if (!parse_parameters(frame->data, "uuuuh", &x, &y, &r, &filling, &color))
+	Color_t color = 0;
+    if (!parse_parameters(frame->data, "uuuus", &x, &y, &r, &filling, &color))
     {
 		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
         return;
@@ -140,7 +148,7 @@ static void executeONK(Receive_Frame *frame)
 static void executeONP(Receive_Frame *frame)
 {
 	uint8_t x = 0, y = 0, width = 0, height = 0, filling = 0;
-	uint16_t color = 0;
+	Color_t color = 0;
 	if (!parse_parameters(frame->data, "uuuuus", &x, &y, &width, &height, &filling, &color)) {
 		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
 		return;
@@ -162,8 +170,8 @@ static void executeONP(Receive_Frame *frame)
 static void executeONT(Receive_Frame *frame)
 {
     uint8_t x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0, filling = 0;
-    uint16_t color = 0;
-    if (!parse_parameters(frame->data, "uuuuuus", &x1, &y1, &x2, &y2, &x3, &y3, &filling, &color))
+    Color_t color = 0;
+    if (!parse_parameters(frame->data, "uuuuuuus", &x1, &y1, &x2, &y2, &x3, &y3, &filling, &color))
     {
 		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
         return;
@@ -182,30 +190,24 @@ static void executeONT(Receive_Frame *frame)
 //TODO nie dziala, dodac obsluge przewijania tekstu
 static void executeONN(Receive_Frame *frame)
 {
-    wchar_t text[512];
+    char text[50] ={0};
     uint8_t x = 0, y = 0, fontSize = 0;
     uint16_t color = 0;
-    if (!parse_parameters(frame->data, "uuus", &x, &y, &fontSize, &color)) {
+    if (!parse_parameters(frame->data, "uuust", &x, &y, &fontSize, &color, text)) {
 		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
         return;
     }
-    const char *text_start = strchr(frame->data, ',');
-    if (text_start) {
-        text_start = strchr(text_start + 1, ','); // Znajdź początek tekstu
-        text_start = strchr(text_start + 1, ','); // Znajdź początek tekstu
-        text_start = strchr(text_start + 1, ','); // Znajdź początek tekstu
-        mbstowcs(text, text_start + 1, 512); // Konwersja tekstu na `wchar_t`
-    }
+
     switch(fontSize)
     {
         case 1:
-            hagl_put_text(text, x, y, color, font5x7); //fontSize zmien
+            hagl_put_text((wchar_t*)text, x, y, color, font5x7); //fontSize zmien
             break;
         case 2:
-            hagl_put_text(text, x, y, color, font5x8); //fontSize zmien
+            hagl_put_text((wchar_t*)text, x, y, color, font5x8); //fontSize zmien
             break;
         case 3:
-            hagl_put_text(text, x, x, color, font6x9); //fontSize zmien
+            hagl_put_text((wchar_t*)text, x, x, color, font6x9); //fontSize zmien
             break;
     }
 }
@@ -427,7 +429,7 @@ void handleCommand(Receive_Frame *frame)
 	            if (parse_coordinates(frame->data, &x, &y)) {
 	                // Sprawdzenie zakresu współrzędnych
 	                if (is_within_bounds(x, y)) {
-	                    lcd_clear(); // Czyszczenie ekranu przed rysowaniem
+	                    lcd_clear();
 	                    commandTable[i].function(frame); // Wywołaj przypisaną funkcję
 	                    lcd_copy();
 	                    return;
