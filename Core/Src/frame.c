@@ -82,20 +82,6 @@ static bool parse_parameters(const char *data, const char *pattern, ...) {
                 }
                 break;
             }
-            case 'i': { // int
-                int *val = va_arg(args, int *);
-                *val = (int)strtol(current, (char **)&current, 10);
-                break;
-            }
-            case 'h': { // uint16_t
-                uint16_t *val = va_arg(args, uint16_t *);
-                if (strncmp(current, "0x", 2) == 0) {
-                    *val = (uint16_t)strtoul(current, (char **)&current, 16);
-                } else {
-                    *val = (uint16_t)strtoul(current, (char **)&current, 10);
-                }
-                break;
-            }
             case 's': { // Kolor (string -> uint16_t)
                 uint16_t *val = va_arg(args, uint16_t *);
                 char color[16]; // Bufor na kolor
@@ -385,7 +371,6 @@ void process_received_char(uint8_t received_char) {
             if (decodeFrame(bx, &ramka, bx_index)) {
                 prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "GOOD");
                 handleCommand(&ramka);
-                lcd_copy();
             } else {
                 prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL");
             }
@@ -442,7 +427,9 @@ void handleCommand(Receive_Frame *frame)
 	            if (parse_coordinates(frame->data, &x, &y)) {
 	                // Sprawdzenie zakresu współrzędnych
 	                if (is_within_bounds(x, y)) {
+	                    lcd_clear(); // Czyszczenie ekranu przed rysowaniem
 	                    commandTable[i].function(frame); // Wywołaj przypisaną funkcję
+	                    lcd_copy();
 	                    return;
 	                } else {
 	                    prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " DISPLAY_AREA");

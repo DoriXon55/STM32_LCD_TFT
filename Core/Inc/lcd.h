@@ -73,7 +73,7 @@ static const ColorMap color_map[] = {
 //================FUNCKJE OD WYSYŁANIA KOMEND/DANYCH/SPRAWDZANIA=================
 
 void lcd_copy(void);
-
+void lcd_clear(void);
 void lcd_fill_box(int x, int y, int width, int height, uint16_t color);
 void lcd_put_pixel(int x, int y, uint16_t color);
 
