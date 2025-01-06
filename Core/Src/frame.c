@@ -15,6 +15,7 @@
 #include "font6x9.h"
 #include "hagl.h"
 #include "rgb565.h"
+#include <ctype.h>
 #include "crc.h"
 
 //=========================ZMIENNE DO RAMKI=============================
@@ -32,7 +33,6 @@ uint8_t received_char;
 Receive_Frame ramka;
 
 //=========================FUNKCJE POMOCNICZE=============================
-//TODO do sprawdzenia
 bool parse_color(const char* color_name, Color_t* color) {
     for (int i = 0; i < sizeof(color_map) / sizeof(ColorMap); i++) {
         if (strcmp(color_name, color_map[i].name) == 0) {
@@ -48,78 +48,117 @@ static void reset_frame_state() {
     escape_detected = false;
     bx_index = 0;
 }
-/*
-static void parseCommandSwtich(char command)
-{
-	switch(command)
-	{
-	case 'K':
-		break;
-	case 'P':
-		break;
-	case 'T':
-		break;
-	case 'N':
-		break;
-	case 'F':
-		break;
-	}
-}
-*/
+
 bool parse_parameters(const char* data, const char* format, ...) {
-    if (!data || !format) return false;
+    if (data == NULL || format == NULL) {
+        return false;
+    }
+
+    // Debug input data
+    USART_fsend("Received data: %s\r\n", data);
+    USART_fsend("Format string: %s\r\n", format);
 
     va_list args;
     va_start(args, format);
 
-    const char* ptr = data;
-    int value = 0;
-    bool reading_number = false;
-    int param_index = 0;
-    char color_name[32] = {0};
-    int color_index = 0;
-
-    while (*ptr != '\0') {
-        if (*ptr >= '0' && *ptr <= '9') {
-            value = (value * 10) + (*ptr - '0');
-            reading_number = true;
-        }
-        else if (*ptr == ',' || *(ptr + 1) == '\0') {
-            if (reading_number) {
-                if (format[param_index] == 'u') {
-                    uint8_t* param = va_arg(args, uint8_t*);
-                    *param = (uint8_t)value;
-                }
-                value = 0;
-                reading_number = false;
-                param_index++;
-            }
-            else if (color_index > 0) {
-                color_name[color_index] = '\0';
-                if (format[param_index] == 's') {
-                    uint16_t* color_value = va_arg(args, uint16_t*);
-                    if (!parse_color(color_name, color_value)) {
-                        va_end(args);
-                        return false;
-                    }
-                }
-                color_index = 0;
-                param_index++;
-            }
-        }
-        else if (*ptr >= 'A' && *ptr <= 'Z') {
-            color_name[color_index++] = *ptr;
-            if (color_index >= sizeof(color_name) - 1) {
-                va_end(args);
-                return false;
-            }
-        }
-        ptr++;
+    // Alokuj pamięć z dodatkowym marginesem bezpieczeństwa
+    size_t data_len = strlen(data) + 1;
+    char* data_copy = (char*)calloc(data_len + 1, sizeof(char)); // Użyj calloc zamiast malloc
+    if (data_copy == NULL) {
+        va_end(args);
+        return false;
     }
 
+    // Kopiuj dane z ograniczeniem długości
+    strncpy(data_copy, data, data_len);
+    data_copy[data_len] = '\0'; // Upewnij się, że string jest zakończony
+
+    char* token = strtok(data_copy, ",");
+    const char* fmt_ptr = format;
+    int param_count = 0;
+
+    while (*fmt_ptr != '\0' && token != NULL) {
+        // Oczyść token ze zbędnych znaków
+        char cleaned_token[50] = {0}; // Bufor na wyczyszczony token
+        size_t clean_idx = 0;
+        size_t token_len = strlen(token);
+
+        // Pomiń początkowe spacje
+        size_t start_idx = 0;
+        while (start_idx < token_len && isspace(token[start_idx])) {
+            start_idx++;
+        }
+
+        // Kopiuj tylko znaki do pierwszej spacji dla parametrów innych niż tekst
+        for (size_t i = start_idx; i < token_len && clean_idx < sizeof(cleaned_token) - 1; i++) {
+            if (*fmt_ptr != 't' && isspace(token[i])) {
+                break;
+            }
+            cleaned_token[clean_idx++] = token[i];
+        }
+        cleaned_token[clean_idx] = '\0';
+
+        switch (*fmt_ptr) {
+            case 'u': {
+                char* endptr;
+                unsigned long val = strtoul(cleaned_token, &endptr, 10);
+                if (*endptr != '\0' || val > 255) {
+                    free(data_copy);
+                    va_end(args);
+                    return false;
+                }
+                uint8_t* ptr = va_arg(args, uint8_t*);
+                *ptr = (uint8_t)val;
+                USART_fsend("Parsed uint8_t: %u\r\n", (uint8_t)val);
+                break;
+            }
+            case 's': {
+                Color_t* color_ptr = va_arg(args, Color_t*);
+                if (!parse_color(cleaned_token, color_ptr)) {
+                    free(data_copy);
+                    va_end(args);
+                    return false;
+                }
+                break;
+            }
+            case 't': {
+                char* ptr = va_arg(args, char*);
+                // Dla tekstu, kopiujemy całą pozostałą część danych
+                strncpy(ptr, token, 49);
+                ptr[49] = '\0';
+                break;
+            }
+            default:
+                free(data_copy);
+                va_end(args);
+                return false;
+        }
+
+        token = strtok(NULL, ",");
+        fmt_ptr++;
+        param_count++;
+    }
+
+    bool success = (*fmt_ptr == '\0' && token == NULL);
+    if (!success) {
+        USART_fsend("Parameter count mismatch\r\n");
+    }
+
+    free(data_copy);
     va_end(args);
-    return true;
+    return success;
 }
+
+// Funkcja do czyszczenia ramki
+void clear_frame(Receive_Frame* frame) {
+    if (frame) {
+        memset(frame->data, 0, sizeof(frame->data));
+        memset(frame->command, 0, sizeof(frame->command));
+        // Wyczyść wszystkie inne pola ramki, jeśli istnieją
+    }
+}
+
+
 
 //==========================OBSŁUGA KOMEND================================
 
@@ -190,45 +229,54 @@ static void executeONT(Receive_Frame *frame)
 //TODO nie dziala, dodac obsluge przewijania tekstu
 static void executeONN(Receive_Frame *frame)
 {
-    char text[50] ={0};
+    char text[50] = {0};
+    wchar_t wtext[50] = {0};
     uint8_t x = 0, y = 0, fontSize = 0;
-    uint16_t color = 0;
+    Color_t color = BLACK;
+
+    USART_fsend("Executing ONN with data: %s\r\n", frame->data);
+
+    // Zmieniliśmy format z "uuust" na "uuuss" - ostatni parametr koloru jako string
     if (!parse_parameters(frame->data, "uuust", &x, &y, &fontSize, &color, text)) {
-		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
+        prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
         return;
     }
+    size_t textLen = strlen(text);
+    for(size_t i = 0; i < textLen && i < 49; i++) {
+        wtext[i] = (wchar_t)text[i];
+    }
+    wtext[textLen] = L'\0';
 
     switch(fontSize)
     {
         case 1:
-            hagl_put_text((wchar_t*)text, x, y, color, font5x7); //fontSize zmien
+            hagl_put_text(wtext, x, y, color, font5x7);
             break;
         case 2:
-            hagl_put_text((wchar_t*)text, x, y, color, font5x8); //fontSize zmien
+            hagl_put_text(wtext, x, y, color, font5x8);
             break;
         case 3:
-            hagl_put_text((wchar_t*)text, x, x, color, font6x9); //fontSize zmien
+            hagl_put_text(wtext, x, y, color, font6x9);
             break;
     }
 }
 
 
-
+/************************************************************************
+* Function: main()
+* (some details about what main does here...)
+************************************************************************/
 //TODO bład parsowania danych
 static void executeOFF(Receive_Frame *frame)
 {
-	uint8_t state = 0;
-	if (!parse_parameters(frame->data, "u", &state)) {
-		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
-		return;
-	}
-	switch(state)
+
+	switch(frame->data[0])
 	{
 	case 0:
-		HAL_GPIO_WritePin(BL_GPIO_Port, BL_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(BL_GPIO_Port, BL_Pin, GPIO_PIN_RESET); //TODO sprawdzić dlaczego nie działa
 		break;
 	case 1:
-		hagl_fill_rectangle(0,0, LCD_WIDTH, LCD_HEIGHT, WHITE);
+		hagl_fill_rectangle(0,0, LCD_WIDTH, LCD_HEIGHT, BLACK);
 		break;
 	}
 }
@@ -425,13 +473,23 @@ void handleCommand(Receive_Frame *frame)
 	for (int i = 0; i < COMMAND_COUNT; i++) {
 	        if (strncmp(frame->command, commandTable[i].command, COMMAND_LENGTH) == 0) {
 	            // Parsowanie współrzędnych z `data`
+	        	if (strcmp(commandTable[i].command, "OFF") == 0 && strlen(frame->data) == 1) {
+	        	                lcd_clear();
+	        	                commandTable[i].function(frame);
+	        	                lcd_copy();
+	        	                clear_frame(frame);
+	        	                return;
+	        	}
 	            int x, y;
 	            if (parse_coordinates(frame->data, &x, &y)) {
+	            	USART_fsend("%s", frame->data);
+	            	USART_fsend("\r\n");
 	                // Sprawdzenie zakresu współrzędnych
 	                if (is_within_bounds(x, y)) {
 	                    lcd_clear();
 	                    commandTable[i].function(frame); // Wywołaj przypisaną funkcję
 	                    lcd_copy();
+	                    clear_frame(frame);
 	                    return;
 	                } else {
 	                    prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " DISPLAY_AREA");

@@ -107,6 +107,7 @@ void lcd_init(void) {
     lcd_cmd(ST7735S_SLPOUT);
     delay(120);
     lcd_cmd(ST7735S_DISPON);
+    HAL_GPIO_WritePin(BL_GPIO_Port, BL_Pin, GPIO_PIN_SET);
 }
 
 void lcd_fill_box(int x, int y, int width, int height, uint16_t color)
