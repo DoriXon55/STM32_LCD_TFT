@@ -32,8 +32,36 @@ bool in_frame = false;
 uint8_t received_char;
 Receive_Frame ramka;
 
-//=========================FUNKCJE POMOCNICZE=============================
-bool parse_color(const char* color_name, Color_t* color) {
+
+
+/************************************************************************
+* Funkcja: parseColor()
+* Cel: Konwersja nazwy koloru na wartość Color_t
+*
+* Parametry:
+*   - color_name: Wskaźnik na string z nazwą koloru
+*   - color: Wskaźnik na zmienną Color_t, gdzie zostanie zapisany wynik
+*
+* Zwraca:
+*   - true: Jeśli znaleziono kolor w tablicy color_map
+*   - false: Jeśli nie znaleziono koloru
+*
+* Używa:
+*   - strcmp(): Porównuje dwa stringi
+*   - Parametry: (const char* str1, const char* str2)
+*   - Zwraca: 0 jeśli stringi są identyczne
+*
+* Zasada działania:
+*   1. Iteruje przez tablicę color_map
+*   2. Porównuje nazwę koloru z każdym elementem tablicy
+*   3. Jeśli znajdzie dopasowanie, zapisuje wartość koloru
+*
+* Korzysta z:
+*   - color_map: Globalna tablica struktur ColorMap zawierająca:
+*   - name: string z nazwą koloru
+*   - value: wartość Color_t w formacie RGB565
+************************************************************************/
+bool parseColor(const char* color_name, Color_t* color) {
     for (int i = 0; i < sizeof(color_map) / sizeof(ColorMap); i++) {
         if (strcmp(color_name, color_map[i].name) == 0) {
             *color = color_map[i].value;
@@ -43,79 +71,123 @@ bool parse_color(const char* color_name, Color_t* color) {
     return false;
 }
 
-static void reset_frame_state() {
+
+
+/************************************************************************
+* Funkcja: resetFrameState()
+* Cel: Resetuje stan maszyny stanów odbierającej ramki
+* Funkcja pomocnicza wywoływana gdy:
+* 	- Wykryto błąd w ramce
+*   - Zakończono przetwarzanie ramki
+*   - Potrzebny jest reset stanu odbierania
+*
+* Zmienne globalne:
+*   - in_frame: Flaga oznaczająca czy jesteśmy w trakcie odbierania ramki
+*   - escape_detected: Flaga oznaczająca wykrycie znaku escape
+*   - bx_index: Indeks w buforze odbiorczym
+************************************************************************/
+static void resetFrameState() {
     in_frame = false;
     escape_detected = false;
     bx_index = 0;
 }
 
-bool parse_parameters(const char* data, const char* format, ...) {
-    if (data == NULL || format == NULL) {
+
+
+/************************************************************************
+* Funkcja: parseParameters()
+* Cel: Parsuje parametry z ciągu znaków według zadanego formatu
+*
+* Parametry:
+*   - data: "String" zawierający dane do sparsowania
+*   - format: "String" określający format danych ("uuust" itp.)
+*   - ...: Zmienne wskaźniki na miejsca zapisu wartości
+*
+* Zwraca:
+*   - true: Jeśli parsowanie się powiodło
+*   - false: W przypadku błędu
+*
+* Używa:
+*   1. isspace(): Sprawdza czy znak jest białym znakiem
+*      - Zwraca: !0 jeśli tak, 0 jeśli nie
+*
+*   2. strtoul(): Konwertuje string na unsigned long
+*      - Parametry: (const char* str, char** endptr, int base)
+*      - Zwraca: Przekonwertowaną wartość
+*
+*   3. strncpy(): Kopiuje n znaków z jednego stringa do drugiego
+*      - Parametry: (char* dest, const char* src, size_t n)
+*
+*   4. parseColor(): Opisana wcześniej funkcja pomocnicza
+*
+* Obsługiwane formaty:
+*   u - unsigned int (0-255)
+*   s - kolor (string -> Color_t)
+*   t - tekst (max 50 znaków)
+*
+* Zasada działania:
+*   1. Sprawdza poprawność danych wejściowych
+*   2. Inicjalizuje va_list do obsługi zmiennej liczby argumentów
+*   3. Dla każdego znaku w formacie:
+*      - Pomija białe znaki
+*      - Wyodrębnia token do następnego przecinka
+*      - Przetwarza token według odpowiedniego typu
+*   4. Zwalnia va_list
+************************************************************************/
+bool parseParameters(const char* data, const char* format, ...) {
+    if (!data || !format) {
+        USART_fsend("Null input data or format\r\n");
         return false;
     }
 
-    // Debug input data
-    USART_fsend("Received data: %s\r\n", data);
-    USART_fsend("Format string: %s\r\n", format);
+    USART_fsend("Parsing: data='%s', format='%s'\r\n", data, format);
 
     va_list args;
     va_start(args, format);
 
-    // Alokuj pamięć z dodatkowym marginesem bezpieczeństwa
-    size_t data_len = strlen(data) + 1;
-    char* data_copy = (char*)calloc(data_len + 1, sizeof(char)); // Użyj calloc zamiast malloc
-    if (data_copy == NULL) {
-        va_end(args);
-        return false;
-    }
-
-    // Kopiuj dane z ograniczeniem długości
-    strncpy(data_copy, data, data_len);
-    data_copy[data_len] = '\0'; // Upewnij się, że string jest zakończony
-
-    char* token = strtok(data_copy, ",");
+    const char* data_ptr = data;
     const char* fmt_ptr = format;
-    int param_count = 0;
+    char token[51];
+    size_t token_idx;
 
-    while (*fmt_ptr != '\0' && token != NULL) {
-        // Oczyść token ze zbędnych znaków
-        char cleaned_token[50] = {0}; // Bufor na wyczyszczony token
-        size_t clean_idx = 0;
-        size_t token_len = strlen(token);
+    while (*fmt_ptr) {
+        // Pomiń białe znaki
+        while (isspace(*data_ptr)) data_ptr++;
 
-        // Pomiń początkowe spacje
-        size_t start_idx = 0;
-        while (start_idx < token_len && isspace(token[start_idx])) {
-            start_idx++;
+        token_idx = 0;
+
+        // Zbierz token do następnego przecinka lub końca stringa
+        while (*data_ptr && *data_ptr != ',' && token_idx < 49) {
+            token[token_idx++] = *data_ptr++;
+        }
+        token[token_idx] = '\0';
+
+        // Pomiń przecinek jeśli istnieje
+        if (*data_ptr == ',') data_ptr++;
+
+        // Usuń końcowe białe znaki
+        while (token_idx > 0 && isspace(token[token_idx - 1])) {
+            token[--token_idx] = '\0';
         }
 
-        // Kopiuj tylko znaki do pierwszej spacji dla parametrów innych niż tekst
-        for (size_t i = start_idx; i < token_len && clean_idx < sizeof(cleaned_token) - 1; i++) {
-            if (*fmt_ptr != 't' && isspace(token[i])) {
-                break;
-            }
-            cleaned_token[clean_idx++] = token[i];
-        }
-        cleaned_token[clean_idx] = '\0';
+        USART_fsend("Processing token: '%s' with format '%c'\r\n", token, *fmt_ptr);
 
         switch (*fmt_ptr) {
             case 'u': {
                 char* endptr;
-                unsigned long val = strtoul(cleaned_token, &endptr, 10);
-                if (*endptr != '\0' || val > 255) {
-                    free(data_copy);
+                unsigned long val = strtoul(token, &endptr, 10);
+                if (*endptr || val > 255) {
+                    USART_fsend("Invalid unsigned int: %s\r\n", token);
                     va_end(args);
                     return false;
                 }
-                uint8_t* ptr = va_arg(args, uint8_t*);
-                *ptr = (uint8_t)val;
-                USART_fsend("Parsed uint8_t: %u\r\n", (uint8_t)val);
+                *va_arg(args, uint8_t*) = (uint8_t)val;
                 break;
             }
             case 's': {
                 Color_t* color_ptr = va_arg(args, Color_t*);
-                if (!parse_color(cleaned_token, color_ptr)) {
-                    free(data_copy);
+                if (!parseColor(token, color_ptr)) {
+                    USART_fsend("Invalid color: %s\r\n", token);
                     va_end(args);
                     return false;
                 }
@@ -123,51 +195,81 @@ bool parse_parameters(const char* data, const char* format, ...) {
             }
             case 't': {
                 char* ptr = va_arg(args, char*);
-                // Dla tekstu, kopiujemy całą pozostałą część danych
-                strncpy(ptr, token, 49);
-                ptr[49] = '\0';
+                strncpy(ptr, token, 50);
+                ptr[50] = '\0';
                 break;
             }
             default:
-                free(data_copy);
+                USART_fsend("Unknown format: %c\r\n", *fmt_ptr);
                 va_end(args);
                 return false;
         }
 
-        token = strtok(NULL, ",");
         fmt_ptr++;
-        param_count++;
     }
 
-    bool success = (*fmt_ptr == '\0' && token == NULL);
-    if (!success) {
-        USART_fsend("Parameter count mismatch\r\n");
-    }
-
-    free(data_copy);
     va_end(args);
-    return success;
+    return !*data_ptr;
 }
 
-// Funkcja do czyszczenia ramki
-void clear_frame(Receive_Frame* frame) {
+
+
+
+/************************************************************************
+* Funkcja: clearFrame()
+* Cel: Czyści zawartość struktury ramki komunikacyjnej
+*   1. Sprawdza czy wskaźnik frame nie jest NULL
+*   2. Zeruje pole data struktury
+*   3. Zeruje pole command struktury
+*
+* Parametry:
+*   - frame: Wskaźnik na strukturę Receive_Frame do wyczyszczenia
+*
+* Używa:
+*   memset(): Wypełnia blok pamięci zadaną wartością
+*   - Parametry: (void* ptr, int value, size_t num)
+*   - ptr: Wskaźnik na początek bloku pamięci
+*   - value: Wartość do wypełnienia (0 dla wyzerowania)
+*   - num: Liczba bajtów do wypełnienia
+************************************************************************/
+void clearFrame(Receive_Frame* frame) {
     if (frame) {
         memset(frame->data, 0, sizeof(frame->data));
         memset(frame->command, 0, sizeof(frame->command));
-        // Wyczyść wszystkie inne pola ramki, jeśli istnieją
     }
 }
 
 
 
-//==========================OBSŁUGA KOMEND================================
+/************************************************************************
+* Funkcja: executeONK()
+* Cel: Obsługa komendy rysowania koła na wyświetlaczu
 
-//TODO nie dzialla
+* Parametry:
+*   - frame: Wskaźnik na strukturę z danymi ramki
+*
+* Zmienne:
+*   - x, y: Współrzędne środka koła (uint8_t)
+*   - r: Promień koła (uint8_t)
+*   - filling: Tryb wypełnienia (0-kontur, 1-wypełnione)
+*   - color: Kolor w formacie RGB565 (Color_t)
+*
+* Używa:
+*   1. parseParameters(): Parsuje parametry z formatu "uuuus"
+*      - u: współrzędne x,y,r,filling
+*      - s: kolor
+*
+*   2. hagl_draw_circle() / hagl_fill_circle():
+*      Funkcje biblioteki HAGL do rysowania
+*      - Parametry: (x, y, r, color)
+*
+*   3. prepareFrame(): Wysyła odpowiedź w przypadku błędu
+************************************************************************/
 static void executeONK(Receive_Frame *frame)
 {
 	uint8_t x = 0, y = 0, r = 0, filling = 0;
 	Color_t color = 0;
-    if (!parse_parameters(frame->data, "uuuus", &x, &y, &r, &filling, &color))
+    if (!parseParameters(frame->data, "uuuus", &x, &y, &r, &filling, &color))
     {
 		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
         return;
@@ -184,11 +286,34 @@ static void executeONK(Receive_Frame *frame)
 }
 
 
+
+/************************************************************************
+* Funkcja: executeONP
+* Cel: Obsługa komendy rysowania prostokąta
+*
+* Parametry:
+*   - frame: Wskaźnik na strukturę z danymi ramki
+*
+* Zmienne:
+*   - x, y: Współrzędne lewego górnego rogu (uint8_t)
+*   - width, height: Wymiary prostokąta (uint8_t)
+*   - filling: Tryb wypełnienia (0-kontur, 1-wypełniony)
+*   - color: Kolor w formacie RGB565 (Color_t)
+*
+* Używa:
+*   1. parseParameters(): Parsuje parametry z formatu "uuuuus"
+*      - u: x,y,width,height,filling
+*      - s: kolor
+*
+*   2. hagl_draw_rectangle() / hagl_fill_rectangle():
+*      Funkcje HAGL do rysowania prostokątów
+*      - Parametry: (x, y, width, height, color)
+************************************************************************/
 static void executeONP(Receive_Frame *frame)
 {
 	uint8_t x = 0, y = 0, width = 0, height = 0, filling = 0;
 	Color_t color = 0;
-	if (!parse_parameters(frame->data, "uuuuus", &x, &y, &width, &height, &filling, &color)) {
+	if (!parseParameters(frame->data, "uuuuus", &x, &y, &width, &height, &filling, &color)) {
 		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
 		return;
 	}
@@ -205,12 +330,34 @@ static void executeONP(Receive_Frame *frame)
 }
 
 
-//TODO nie dziala
+
+
+/************************************************************************
+* Function: executeONT()
+* Cel: Obsługa komendy rysowania trójkąta
+*
+* Parametry:
+*   - frame: Wskaźnik na strukturę z danymi ramki
+*
+* Zmienne:
+*   - x1,y1,x2,y2,x3,y3: Współrzędne wierzchołków (uint8_t)
+*   - filling: Tryb wypełnienia (0-kontur, 1-wypełniony)
+*   - color: Kolor w formacie RGB565 (Color_t)
+*
+* Używa:
+*   1. parseParameters(): Parsuje parametry z formatu "uuuuuuus"
+*      - u: x1,y1,x2,y2,x3,y3,filling
+*      - s: kolor
+*
+*   2. hagl_draw_triangle() / hagl_fill_triangle():
+*      Funkcje HAGL do rysowania trójkątów
+*      - Parametry: (x1,y1, x2,y2, x3,y3, color)
+************************************************************************/
 static void executeONT(Receive_Frame *frame)
 {
     uint8_t x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0, filling = 0;
     Color_t color = 0;
-    if (!parse_parameters(frame->data, "uuuuuuus", &x1, &y1, &x2, &y2, &x3, &y3, &filling, &color))
+    if (!parseParameters(frame->data, "uuuuuuus", &x1, &y1, &x2, &y2, &x3, &y3, &filling, &color))
     {
 		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
         return;
@@ -226,7 +373,36 @@ static void executeONT(Receive_Frame *frame)
     }
 }
 
-//TODO nie dziala, dodac obsluge przewijania tekstu
+
+
+
+/************************************************************************
+* Funkcja: executeONN()
+* Cel: Obsługa komendy wyświetlania tekstu na ekranie LCD
+*
+* Parametry:
+*   - frame: Wskaźnik na strukturę z danymi ramki
+*
+* Zmienne:
+*   - text[50]: Bufor na tekst w formacie char
+*   - wtext[50]: Bufor na tekst w formacie wchar_t (szeroki znak)
+*   - x, y: Współrzędne początkowe tekstu (uint8_t)
+*   - fontSize: Rozmiar czcionki (1-3)
+*   - color: Kolor tekstu (domyślnie BLACK)
+*
+* Używa:
+*   1. parseParameters(): Parsuje parametry z formatu "uuust"
+*      - u: x,y,fontSize
+*      - s: color
+*      - t: text
+*
+*   2. strlen(): Oblicza długość tekstu
+*
+*   3. hagl_put_text(): Wyświetla tekst
+*      - Parametry: (wtext, x, y, color, font)
+*      - Dostępne fonty: font5x7, font5x8, font6x9
+
+************************************************************************/
 static void executeONN(Receive_Frame *frame)
 {
     char text[50] = {0};
@@ -234,15 +410,12 @@ static void executeONN(Receive_Frame *frame)
     uint8_t x = 0, y = 0, fontSize = 0;
     Color_t color = BLACK;
 
-    USART_fsend("Executing ONN with data: %s\r\n", frame->data);
-
-    // Zmieniliśmy format z "uuust" na "uuuss" - ostatni parametr koloru jako string
-    if (!parse_parameters(frame->data, "uuust", &x, &y, &fontSize, &color, text)) {
+    if (!parseParameters(frame->data, "uuust", &x, &y, &fontSize, &color, text)) {
         prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
         return;
     }
     size_t textLen = strlen(text);
-    for(size_t i = 0; i < textLen && i < 49; i++) {
+    for(size_t i = 0; i < textLen && i < 50; i++) {
         wtext[i] = (wchar_t)text[i];
     }
     wtext[textLen] = L'\0';
@@ -263,10 +436,21 @@ static void executeONN(Receive_Frame *frame)
 
 
 /************************************************************************
-* Function: main()
-* (some details about what main does here...)
+* Funkcja: executeOFF()
+* Cel: Obsługa komendy wyłączenia/wyczyszczenia wyświetlacza
+*
+* Parametry:
+*   - frame: Wskaźnik na strukturę z danymi ramki
+*
+* Tryby:
+*   case 0: Wyłączenie podświetlenia
+*     - Używa HAL_GPIO_WritePin(BL_GPIO_Port, BL_Pin, GPIO_PIN_RESET)
+*
+*   case 1: Czyszczenie ekranu
+*     - Używa hagl_fill_rectangle(0,0, LCD_WIDTH, LCD_HEIGHT, BLACK)
+*
+*   TODO: Naprawienie problemu z wyłączaniem podświetlenia
 ************************************************************************/
-//TODO bład parsowania danych
 static void executeOFF(Receive_Frame *frame)
 {
 
@@ -282,24 +466,67 @@ static void executeOFF(Receive_Frame *frame)
 }
 
 
-//=======================SPRAWDZANIE KOORDYNATÓW=========================
-bool is_within_bounds(int x, int y)
+/************************************************************************
+* Funkcja: isWithinBounds()
+* Cel: Sprawdza czy podane współrzędne mieszczą się w wymiarach ekranu
+*
+* Parametry:
+*   - x: Współrzędna X (int)
+*   - y: Współrzędna Y (int)
+*
+* Zwraca:
+*   - true: Jeśli punkt mieści się w wymiarach ekranu
+*   - false: Jeśli punkt jest poza ekranem
+*
+* Sprawdza:
+*   1. x >= 0 && x < LCD_WIDTH
+*   2. y >= 0 && y < LCD_HEIGHT
+*
+* Korzysta z:
+*   - LCD_WIDTH: Stała określająca szerokość ekranu
+*   - LCD_HEIGHT: Stała określająca wysokość ekranu
+************************************************************************/
+bool isWithinBounds(int x, int y)
 {
 	return (x >= 0 && x < LCD_WIDTH)&&(y >= 0 && y < LCD_HEIGHT);
 }
-bool parse_coordinates(const char *data, int *x, int *y)
+
+/************************************************************************
+* Funkcja: parseCoordinates()
+* Cel: Parsuje "string" zawierający współrzędne x,y
+*
+* Parametry:
+*   - data: String wejściowy w formacie "x,y"
+*   - x: Wskaźnik na zmienną dla współrzędnej X
+*   - y: Wskaźnik na zmienną dla współrzędnej Y
+*
+* Zwraca:
+*   - true: Jeśli parsowanie się powiodło
+*   - false: W przypadku błędu
+*
+* Używa:
+*   1. strncpy(): Kopiuje string wejściowy
+*      - Konieczne bo strtok modyfikuje string
+*
+*   2. strtok(): Dzieli string według separatora ","
+*      - Pierwsze wywołanie z string
+*      - Kolejne z NULL
+*
+*   3. atoi(): Konwertuje string na int
+************************************************************************/
+bool parseCoordinates(const char *data, int *x, int *y)
 {
 	char *token;
 	    char data_copy[MAX_DATA_SIZE];
-	    strncpy(data_copy, data, MAX_DATA_SIZE); // Kopiujemy dane wejściowe, bo strtok modyfikuje ciąg
+	    strncpy(data_copy, data, MAX_DATA_SIZE);
 
-	    token = strtok(data_copy, ","); // Pierwsza współrzędna (jest to funkcja służąca do oddzielania stringów z separatorem)
+	    token = strtok(data_copy, ",");
 	    if (token == NULL) {
 	        return false;
 	    }
 	    *x = atoi(token);
 
-	    token = strtok(NULL, ","); // Druga współrzędna
+	    token = strtok(NULL, ",");
 	    if (token == NULL) {
 	        return false;
 	    }
@@ -307,19 +534,51 @@ bool parse_coordinates(const char *data, int *x, int *y)
 
 	    return true;
 }
-//=======================BYTE STUFFING=========================
+
+
+
+/************************************************************************
+* Funkcja: byteStuffing()
+* Cel: Koduje specjalne znaki w ramce komunikacyjnej
+*   1. Iteruje przez każdy bajt wejściowy
+*   2. Jeśli znajdzie znak specjalny:
+*      - Wstawia znak ESCAPE_CHAR
+*      - Wstawia odpowiedni znak zastępczy
+*   3. Jeśli zwykły znak - kopiuje bez zmian
+*
+* Parametry:
+*   - input: Wskaźnik na dane wejściowe
+*   - input_len: Długość danych wejściowych
+*   - output: Wskaźnik na bufor wyjściowy
+*
+* Zwraca:
+*   - size_t: Liczba bajtów w buforze wyjściowym
+*
+* Sekwencje zamiany:
+* 	FRAME_START			-> '~'
+* 	FRAME_END			-> '`'
+* 	FRAME_START_STUFF	-> '~'
+* 	FRAME_END_STUFF		-> '&'
+* 	ESCAPE_CHAR      	-> "}"
+* 	ESCAPE_CHAR_STUFF	-> ']'
+
+*   '}' 			 	-> "}]"
+*   '~'              	-> "}^"
+*   '`'              	-> "}&"
+
+************************************************************************/
 size_t byteStuffing(uint8_t *input, size_t input_len, uint8_t *output) {
     size_t j = 0;
     for (size_t i = 0; i < input_len; i++) {
         if (input[i] == ESCAPE_CHAR) {
             output[j++] = ESCAPE_CHAR;
-            output[j++] = ']';
-        } else if (input[i] == '~') {
+            output[j++] = ESCAPE_CHAR_STUFF;
+        } else if (input[i] == FRAME_START) {
             output[j++] = ESCAPE_CHAR;
-            output[j++] = '^';
-        } else if (input[i] == '`') {
+            output[j++] = FRAME_START_STUFF;
+        } else if (input[i] == FRAME_END) {
             output[j++] = ESCAPE_CHAR;
-            output[j++] = '&';
+            output[j++] = FRAME_END_STUFF;
         } else {
             output[j++] = input[i];
         }
@@ -327,23 +586,52 @@ size_t byteStuffing(uint8_t *input, size_t input_len, uint8_t *output) {
     return j;
 }
 
-//=======================OBSŁUGA RAMKI ZWROTNEJ=========================
+/************************************************************************
+* Funckja: prepareFrame
+* Cel: Przygotowuje i wysyła ramkę komunikacyjną
+*
+* Parametry:
+*   - sender: ID nadawcy
+*   - receiver: ID odbiorcy
+*   - command: 3-znakowy kod komendy
+*   - format: Format danych (jak w printf)
+*   - ...: Zmienne argumenty dla formatowania
+*
+* Format ramki zwrotnej:
+*   FRAME_START
+*   [sender][receiver][command][data][CRC]
+*   FRAME_END
+*
+* Używa:
+*   1. va_list/va_start/va_end: Obsługa zmiennej liczby argumentów
+*   2. vsnprintf: Formatowanie stringa z argumentami
+*   3. calculateCrc16: Obliczanie sumy kontrolnej
+*   4. byteStuffing: Kodowanie znaków specjalnych
+*   5. USART_fsend: Wysyłanie przez UART
+*   6. delay: Opóźnienie między bajtami (do zmiany, znaleźć problem)
+*
+* Działanie:
+*   1. Tworzy strukturę ramki
+*   2. Formatuje dane
+*   3. Oblicza CRC
+*   4. Konwertuje CRC na hex
+*   5. Przygotowuje payload
+*   6. Wykonuje byte stuffing
+*   7. Wysyła ramkę
+************************************************************************/
 void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const char *format, ...) {
     Frame frame = {0};
     frame.sender = sender;
     frame.receiver = receiver;
     strncpy((char *)frame.command, command, COMMAND_LENGTH);
 
-    // Formatowanie danych
     va_list args;
     va_start(args, format);
     vsnprintf((char *)frame.data, MAX_DATA_SIZE, format, args);
     va_end(args);
 
-    // Oblicz długość danych
     size_t data_len = strlen((const char *)frame.data);
 
-    // Przygotowanie danych do obliczenia CRC
     size_t crc_input_len = 2 + COMMAND_LENGTH + data_len;
     uint8_t crc_input[crc_input_len];
     crc_input[0] = frame.sender;
@@ -351,37 +639,56 @@ void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const c
     memcpy(crc_input + 2, frame.command, COMMAND_LENGTH);
     memcpy(crc_input + 2 + COMMAND_LENGTH, frame.data, data_len);
 
-    // Obliczanie CRC
-    char crc_output[2]; // Tablica na wynik CRC
-    calculate_crc16(crc_input, crc_input_len, crc_output);
+    char crc_output[2];
+    calculateCrc16(crc_input, crc_input_len, crc_output);
 
-    // Konwersja CRC na heksadecymalne ciągi znaków
-    char crc_hex[5]; // 4 znaki na heksadecymalną reprezentację + 1 na znak null
+    char crc_hex[5];
     snprintf(crc_hex, sizeof(crc_hex), "%02X%02X", (uint8_t)crc_output[0], (uint8_t)crc_output[1]);
 
-    // Przygotowanie do byte-stuffingu
-    uint8_t raw_payload[2 + COMMAND_LENGTH + data_len + 4]; // 4 dodatkowe bajty na heksadecymalne CRC
+    uint8_t raw_payload[2 + COMMAND_LENGTH + data_len + 4];
     raw_payload[0] = frame.sender;
     raw_payload[1] = frame.receiver;
     memcpy(raw_payload + 2, frame.command, COMMAND_LENGTH);
     memcpy(raw_payload + 2 + COMMAND_LENGTH, frame.data, data_len);
-    memcpy(raw_payload + 2 + COMMAND_LENGTH + data_len, crc_hex, 4); // Dodanie heksadecymalnego CRC
+    memcpy(raw_payload + 2 + COMMAND_LENGTH + data_len, crc_hex, 4);
 
     uint8_t stuffed_payload[512];
     size_t stuffed_len = byteStuffing(raw_payload, 2 + COMMAND_LENGTH + data_len + 4, stuffed_payload);
 
-    // Wysyłanie ramki
-    USART_fsend("%c", FRAME_START); // Wyślij początek ramki
+    USART_fsend("%c", FRAME_START);
     for (size_t i = 0; i < stuffed_len; i++) {
-        USART_fsend("%c", stuffed_payload[i]); // Wyślij dane po byte-stuffingu
+        USART_fsend("%c", stuffed_payload[i]);
         delay(10);
     }
-    USART_fsend("%c", FRAME_END); // Wyślij koniec ramki
+    USART_fsend("%c", FRAME_END);
     USART_fsend("\r\n");
-
 }
 
-//=======================DEKODOWANIE RAMKI=========================
+/************************************************************************
+* Funkcja: decodeFrame()
+* Cel: Dekoduje otrzymaną ramkę i weryfikuje CRC
+*
+* Parametry:
+*   - bx: Bufor z odebranymi danymi
+*   - frame: Wskaźnik na strukturę Receive_Frame
+*   - len: Długość odebranych danych
+*
+* Zwraca:
+*   - true: Ramka poprawna i CRC się zgadza
+*   - false: Błąd w ramce lub niezgodność CRC
+*
+* Działanie:
+*   1. Sprawdza długość ramki
+*   2. Kopiuje pola ramki:
+*      - receiver, sender
+*      - command
+*      - data
+*   3. Wyodrębnia i porównuje CRC
+*
+* Używa:
+*   - memcpy: Kopiowanie danych
+*   - calculateCrc16: Obliczanie sumy kontrolnej
+************************************************************************/
 bool decodeFrame(uint8_t *bx, Receive_Frame *frame, uint8_t len) {
     char ownCrc[2];
     char incCrc[2];
@@ -395,7 +702,7 @@ bool decodeFrame(uint8_t *bx, Receive_Frame *frame, uint8_t len) {
             memcpy(frame->data, &bx[k],data_len);
             k += data_len;
             memcpy(incCrc, &bx[k], 2);
-            calculate_crc16((uint8_t *)frame, k, ownCrc);
+            calculateCrc16((uint8_t *)frame, k, ownCrc);
             if(ownCrc[0] != incCrc[0] || ownCrc[1] != incCrc[1]) {
             	return false;
             }
@@ -404,19 +711,45 @@ bool decodeFrame(uint8_t *bx, Receive_Frame *frame, uint8_t len) {
         return false;
 }
 
-
-
-//=======================DETEKCJA RAMKI=========================
-void process_received_char(uint8_t received_char) {
-    if (received_char == '~') {
+/************************************************************************
+* Funkcja: processReceivedChar()
+* Cel: Implementacja maszyny stanów odbierającej ramki
+*
+* Parametry:
+*   - received_char: Odebrany znak
+*
+* Stany:
+*   1. Oczekiwanie na początek ramki ('~')
+*   2. Odbieranie danych ramki
+*   3. Obsługa znaków escape
+*   4. Zakończenie ramki ('`')
+*
+* Używa:
+*   - decodeFrame: Dekodowanie kompletnej ramki
+*   - handleCommand: Wykonanie komendy z ramki
+*   - prepareFrame: Wysłanie odpowiedzi
+*   - resetFrameState: Reset stanu maszyny
+*
+* Odwrócenie kodowania:
+*   '}^' -> '~'
+*   '}\]' -> '}'
+*   '}&' -> '`'
+*
+* Błędy:
+*   - Nieprawidłowe sekwencje escape
+*   - Przepełnienie bufora
+*   - Nieoczekiwane znaki początku/końca
+************************************************************************/
+void processReceivedChar(uint8_t received_char) {
+    if (received_char == FRAME_START) {
         if (!in_frame) {
             in_frame = true;
             bx_index = 0;
             escape_detected = false;
         } else {
-            reset_frame_state();
+            resetFrameState();
         }
-    } else if (received_char == '`') {
+    } else if (received_char == FRAME_END) {
         if (in_frame) {
             if (decodeFrame(bx, &ramka, bx_index)) {
                 prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "GOOD");
@@ -424,35 +757,35 @@ void process_received_char(uint8_t received_char) {
             } else {
                 prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL");
             }
-            reset_frame_state();
+            resetFrameState();
         } else {
             prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL");
-            reset_frame_state();
+            resetFrameState();
         }
     } else if (in_frame) {
         if (escape_detected) {
-            if (received_char == '^') {
-                bx[bx_index++] = '~';
-            } else if (received_char == ']') {
-                bx[bx_index++] = '}';
-            } else if (received_char == '&') {
-                bx[bx_index++] = '`';
+            if (received_char == FRAME_START_STUFF) {
+                bx[bx_index++] = FRAME_START;
+            } else if (received_char == ESCAPE_CHAR_STUFF) {
+                bx[bx_index++] = ESCAPE_CHAR;
+            } else if (received_char == FRAME_END_STUFF) {
+                bx[bx_index++] = FRAME_END;
             } else {
                 prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL");
-                reset_frame_state();
+                resetFrameState();
             }
             escape_detected = false;
-        } else if (received_char == '}') {
+        } else if (received_char == ESCAPE_CHAR) {
             escape_detected = true;
         } else {
             if (bx_index < sizeof(bx)) {
                 bx[bx_index++] = received_char;
             } else {
-                reset_frame_state();
+            	resetFrameState();
             }
         }
     } else {
-        reset_frame_state();
+    	resetFrameState();
     }
 }
 
@@ -460,7 +793,40 @@ void process_received_char(uint8_t received_char) {
 
 
 
-//=======================ROZPOZNANIE I WYKONANIE KOMENDY=========================
+/************************************************************************
+* Funkcja: handleCommand()
+* Cel: Rozpoznaje i wykonuje komendy z ramki
+*
+* Parametry:
+*   - frame: Wskaźnik na strukturę z ramką
+*
+* Wspierane komendy:
+*   - ONK: Rysowanie koła
+*   - ONP: Rysowanie prostokąta
+*   - ONT: Rysowanie trójkąta
+*   - ONN: Wyświetlanie tekstu
+*   - OFF: Wyłączenie/czyszczenie
+*
+* Działanie:
+*   1. Sprawdza komendę w tablicy commandTable
+*   2. Dla komendy OFF:
+*      - Specjalna obsługa bez współrzędnych
+*   3. Dla pozostałych:
+*      - Parsuje współrzędne
+*      - Sprawdza zakres
+*      - Wykonuje odpowiednią funkcję
+*
+* Używa:
+*   - strncmp: Porównanie komend
+*   - parseCoordinates: Parsowanie współrzędnych
+*   - isWithinBounds: Sprawdzenie zakresu
+*   - lcdClear/lcdCopy: Operacje na wyświetlaczu
+*
+* Błędy:
+*   - Nieznana komenda
+*   - Nieprawidłowe współrzędne
+*   - Przekroczenie obszaru wyświetlacza
+************************************************************************/
 void handleCommand(Receive_Frame *frame)
 {
 	CommandEntry commandTable[COMMAND_COUNT] = {
@@ -472,24 +838,23 @@ void handleCommand(Receive_Frame *frame)
 	};
 	for (int i = 0; i < COMMAND_COUNT; i++) {
 	        if (strncmp(frame->command, commandTable[i].command, COMMAND_LENGTH) == 0) {
-	            // Parsowanie współrzędnych z `data`
 	        	if (strcmp(commandTable[i].command, "OFF") == 0 && strlen(frame->data) == 1) {
-	        	                lcd_clear();
+	        	                lcdClear();
 	        	                commandTable[i].function(frame);
-	        	                lcd_copy();
-	        	                clear_frame(frame);
+	        	                lcdCopy();
+	        	                clearFrame(frame);
 	        	                return;
 	        	}
 	            int x, y;
-	            if (parse_coordinates(frame->data, &x, &y)) {
+	            if (parseCoordinates(frame->data, &x, &y)) {
 	            	USART_fsend("%s", frame->data);
 	            	USART_fsend("\r\n");
-	                // Sprawdzenie zakresu współrzędnych
-	                if (is_within_bounds(x, y)) {
-	                    lcd_clear();
-	                    commandTable[i].function(frame); // Wywołaj przypisaną funkcję
-	                    lcd_copy();
-	                    clear_frame(frame);
+
+	                if (isWithinBounds(x, y)) {
+	                    lcdClear();
+	                    commandTable[i].function(frame);
+	                    lcdCopy();
+	                    clearFrame(frame);
 	                    return;
 	                } else {
 	                    prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " DISPLAY_AREA");

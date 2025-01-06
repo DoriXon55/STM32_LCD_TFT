@@ -69,15 +69,46 @@ void delay(uint32_t delayMs);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+
+
+/************************************************************************
+* Funkcja: delay()
+* Cel: Implementuje opóźnienie w milisekundach
+* Funkcja realizuje opóźnienie blokujące wykorzystując globalny licznik
+* systemowy 'tick'. Czeka aż licznik osiągnie wartość startową + żądane
+* opóźnienie.
+*
+* Parametry:
+*   - delayMs: Liczba milisekund do odczekania
+
+* Korzysta z:
+*   - tick: Globalna zmienna zwiększana w przerwaniu systemowym
+************************************************************************/
 void delay(uint32_t delayMs){
 	uint32_t startTime = tick;
-	while(tick < (startTime+delayMs)); //niestety blokuje działanie programu ale na szczęście nie przerwań
+	while(tick < (startTime+delayMs));
 }
-void wait_for_frame(void)
+
+
+/************************************************************************
+* Funkcja: waitForFrame()
+*
+* Cel: Obsługa odbioru danych z UART podczas oczekiwania na ramkę
+* Funkcja sprawdza czy są dostępne dane w buforze UART.
+* Jeśli tak, pobiera jeden znak i przekazuje go do funkcji
+* przetwarzającej ramkę komunikacyjną.
+*
+* Korzysta z:
+*   - USART_kbhit: Sprawdzenie dostępności danych
+*   - USART_getchar: Pobranie znaku z UART
+*   - processReceivedChar: Przetworzenie odebranego znaku
+************************************************************************/
+void waitForFrame(void)
 {
 	if (USART_kbhit()) {
 	        uint8_t received_char = USART_getchar();
-	        process_received_char(received_char);
+	        processReceivedChar(received_char);
 	 }
 }
 /* USER CODE END 0 */
@@ -106,7 +137,9 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+
   SysTick_Config( 80000000 / 1000 ); //ustawienie systicka na 1 ms
+
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -114,7 +147,9 @@ int main(void)
   MX_USART2_UART_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
-  lcd_init();
+
+  lcdInit(); // inicjalizacja wyświetlacza
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -123,7 +158,9 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	  wait_for_frame();
+
+	  waitForFrame(); //czekanie na odbiór ramki
+
 	/* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

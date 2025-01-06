@@ -18,9 +18,12 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+
 #include "usart.h"
 #include "USART_ringbuffer.h"
+
 /* USER CODE BEGIN 0 */
+
 extern ring_buffer rxRingBuffer;
 extern ring_buffer txRingBuffer;
 extern uint8_t USART_RxBuf[];
@@ -30,7 +33,18 @@ extern volatile int USART_TX_Busy;
 extern volatile int USART_RX_Empty;
 extern volatile int USART_RX_Busy;
 
-
+/************************************************************************
+* Funkcja: HAL_UART_TxCpltCallback()
+*	(Callback funkcji przerwania odbioru UART
+*	Funkcja wywoływana po zakończeniu transmisji jednego bajtu przez UART.
+*	Sprawdza czy są kolejne dane do wysłania w buforze kołowym transmisji.
+*	Jeśli są, pobiera kolejny bajt i rozpoczyna jego transmisję)
+*
+* Korzysta z:
+*   txRingBuffer - struktura bufora kołowego transmisji
+*   USART_TxBuf - bufor danych do transmisji
+*   HAL_UART_Transmit_IT - funkcja HAL rozpoczynająca transmisję
+************************************************************************/
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
    if(huart==&huart2){
 	   if(txRingBuffer.writeIndex!=txRingBuffer.readIndex){
@@ -41,6 +55,19 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
 	   }
    }
 }
+
+/************************************************************************
+* Funkcja: HAL_UART_RxCpltCallback()
+*	(Callback funkcji przerwania odbioru UART
+*	Funkcja wywoływana po odbiorze jednego bajtu przez UART.
+*	Inkrementuje wskaźnik zapisu w buforze kołowym odbioru.
+*	Rozpoczyna oczekiwanie na kolejny bajt.)
+*
+* Korzysta z:
+*   rxRingBuffer - struktura bufora kołowego odbioru
+*   USART_RxBuf - bufor danych odebranych
+*   HAL_UART_Receive_IT - funkcja HAL rozpoczynająca odbiór
+************************************************************************/
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 	 if(huart==&huart2){
 		 rxRingBuffer.writeIndex++;
@@ -80,9 +107,9 @@ void MX_USART2_UART_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USART2_Init 2 */
-  ring_buffer_setup(&rxRingBuffer, USART_RxBuf, RX_BUFFER_SIZE);
-  ring_buffer_setup(&txRingBuffer, USART_TxBuf, TX_BUFFER_SIZE);
-  HAL_UART_Receive_IT(&huart2,&USART_RxBuf[0],1);
+  ringBufferSetup(&rxRingBuffer, USART_RxBuf, RX_BUFFER_SIZE); // inicjalizacja buforu odbiorczego
+  ringBufferSetup(&txRingBuffer, USART_TxBuf, TX_BUFFER_SIZE); // inicjalizacja buforu nadawczego
+  HAL_UART_Receive_IT(&huart2,&USART_RxBuf[0],1); // włączenie przerwań
   /* USER CODE END USART2_Init 2 */
 
 }

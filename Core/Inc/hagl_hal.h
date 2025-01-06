@@ -7,4 +7,4 @@
 
 typedef uint16_t color_t;
 
-#define hagl_hal_put_pixel lcd_put_pixel
+#define hagl_hal_put_pixel lcdPutPixel

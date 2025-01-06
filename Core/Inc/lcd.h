@@ -46,13 +46,11 @@ typedef enum{
 	WHITE = 0xFFFF
 }Color_t;
 
-// Struktura do mapowania nazw kolorów na wartości
 typedef struct {
     const char *name;
     Color_t value;
 } ColorMap;
 
-// Tablica mapowania kolorów
 static const ColorMap color_map[] = {
     {"RED", RED},
     {"GREEN", GREEN},
@@ -64,21 +62,18 @@ static const ColorMap color_map[] = {
     {"BLACK", BLACK}
 };
 
-
-
 //=================PRZESUNIĘCIE PONIEWAŻ STEROWNIK 162x132px OBSŁUGUJE===========
 #define LCD_OFFSET_X  1
 #define LCD_OFFSET_Y  2
 
 //================FUNCKJE OD WYSYŁANIA KOMEND/DANYCH/SPRAWDZANIA=================
 
-void lcd_copy(void);
-void lcd_clear(void);
-void lcd_fill_box(int x, int y, int width, int height, uint16_t color);
-void lcd_put_pixel(int x, int y, uint16_t color);
+void lcdCopy(void);
+void lcdClear(void);
+void lcdPutPixel(int x, int y, uint16_t color);
 
 
 //==========================INICJALIZACJA WYŚWIETLACZA============================
 
-void lcd_init(void);
+void lcdInit(void);
 

@@ -4,9 +4,7 @@
  *  Created on: Nov 6, 2024
  *      Author: doria
  */
-
-#ifndef INC_FRAME_H_
-#define INC_FRAME_H_
+#pragma once
 
 #include <stdint.h>
 #include <stddef.h>
@@ -21,6 +19,9 @@
 #define FRAME_START '~'
 #define FRAME_END '`'
 #define ESCAPE_CHAR '}'
+#define ESCAPE_CHAR_STUFF ']'
+#define FRAME_END_STUFF '&'
+#define FRAME_START_STUFF '^'
 
 
 //==============================DEFINICJE ADRESÓW=======================================
@@ -37,11 +38,11 @@
 
 //====================KOMENDY KTÓRE UŻYTKOWNIK MOŻE WYKONAĆ=========================
 #define COMMAND_COUNT 5
-#define COMMAND_ONK "ONK"//wyświetlanie koła
-#define COMMAND_ONP "ONP"//wyświetlanie prostokąta
-#define COMMAND_ONT "ONT"//wyświetlanie trójkąta
-#define COMMAND_ONN "ONN"//wyświetlanie napisu
-#define COMMAND_OFF "OFF"//wyłączenie wyświetlacza
+#define COMMAND_ONK "ONK" //wyświetlanie koła
+#define COMMAND_ONP "ONP" //wyświetlanie prostokąta
+#define COMMAND_ONT "ONT" //wyświetlanie trójkąta
+#define COMMAND_ONN "ONN" //wyświetlanie napisu
+#define COMMAND_OFF "OFF" //wyłączenie wyświetlacza
 
 //===================STRUKTURA DO TWORZENIA ORAZ WYSYŁANIA RAMKI====================
 typedef struct{
@@ -65,6 +66,21 @@ typedef struct{
 
 
 //====================STRUKTURA DLA ROZPOZNAWANIA KOMENDY======================
+
+/************************************************************************
+* Struktura: CommandEntry
+* Cel: Definiuje mapowanie między komendą a funkcją ją obsługującą
+*
+*   1. command[COMMAND_LENGTH]:
+*      - Tablica znaków przechowująca nazwę komendy
+*      - Długość określona przez COMMAND_LENGTH (zazwyczaj 3)
+*      - Przykład: "ONK", "ONP", "ONN"
+*
+*   2. void (*function)(Receive_Frame *frame):
+*      - Wskaźnik na funkcję obsługującą komendę
+*      - Przyjmuje parametr typu Receive_Frame*
+*      - Zwraca void
+************************************************************************/
 typedef struct {
     char command[COMMAND_LENGTH];
     void (*function)(Receive_Frame *frame);
@@ -78,9 +94,5 @@ size_t byteStuffing(uint8_t *input, size_t input_len, uint8_t *output);
 size_t byteUnstuffing(uint8_t *input, size_t input_len, uint8_t *output);
 bool decodeFrame(uint8_t *bx, Receive_Frame *frame, uint8_t len);
 void handleCommand(Receive_Frame *frame);
-void process_received_char(uint8_t received_char);
+void processReceivedChar(uint8_t received_char);
 
-
-
-
-#endif /* INC_FRAME_H_ */

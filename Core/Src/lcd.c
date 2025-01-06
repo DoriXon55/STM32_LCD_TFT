@@ -4,11 +4,27 @@
  *  Created on: Nov 23, 2024
  *      Author: doria
  */
+
+
+
 #include "lcd.h"
 #include "gpio.h"
 #include "usart.h"
 #include "main.h"
 #include "spi.h"
+
+
+/************************************************************************
+* Zmienne:
+* frame_buffer - Bufor ramki przechowujący piksele wyświetlacza
+* init_table - Tablica inicjalizacyjna z konfiguracją wyświetlacza
+*
+* frame_buffer - Bufor o rozmiarze LCD_WIDTH * LCD_HEIGHT * 2 bajtów
+* przechowujący aktualny stan wyświetlacza w formacie RGB565
+*
+* init_table - Zawiera sekwencję komend i danych inicjalizujących wyświetlacz
+* Każda komenda jest oznaczona makrem CMD()
+************************************************************************/
 static uint16_t frame_buffer[LCD_WIDTH * LCD_HEIGHT] = {0};
 static const uint16_t init_table[] = {
     CMD(ST7735S_FRMCTR1), 0x01, 0x2c, 0x2d,
@@ -30,95 +46,185 @@ static const uint16_t init_table[] = {
     CMD(ST7735S_COLMOD), 0x05,
     CMD(ST7735S_MADCTL), 0xa0,
 };
-static void lcd_cmd(uint8_t cmd)
+
+
+
+/************************************************************************
+* Funkcja: lcdCmd()
+*
+* Cel: Wysyła komendę do wyświetlacza
+* Parametry:
+*   - cmd: 8-bitowa komenda do wysłania
+* Korzysta z:
+*   - HAL_GPIO_WritePin: ustawienie pinów CS i DC
+*   - HAL_SPI_Transmit: transmisja przez SPI
+************************************************************************/
+static void lcdCmd(uint8_t cmd)
 {
 	HAL_GPIO_WritePin(DC_GPIO_Port, DC_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET);
 	HAL_SPI_Transmit(&hspi2, &cmd, 1, HAL_MAX_DELAY);
 	HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_SET);
 }
-static void lcd_data(uint8_t data)
+
+/************************************************************************
+* Funkcja: lcdData()
+*
+* Cel: Wysyła dane do wyświetlacza
+* Parametry:
+*   - data: 8-bitowa wartość do wysłania
+* Korzysta z:
+*   - HAL_GPIO_WritePin: ustawienie pinów CS i DC
+*   - HAL_SPI_Transmit: transmisja przez SPI
+************************************************************************/
+static void lcdData(uint8_t data)
 {
 	HAL_GPIO_WritePin(DC_GPIO_Port, DC_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET);
 	HAL_SPI_Transmit(&hspi2, &data, 1, HAL_MAX_DELAY);
 	HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_SET);
 }
-static void lcd_send(uint16_t value)
+
+/************************************************************************
+* Funkcja: lcdSend()
+*
+* Cel: Wysyła komendę lub dane w zależności od bitu 0x100
+* Parametry:
+*   - value: 16-bitowa wartość (bit 0x100 określa czy to komenda)
+* Korzysta z:
+*   - lcd_cmd: wysyłanie komendy
+*   - lcd_data: wysyłanie danych
+************************************************************************/
+static void lcdSend(uint16_t value)
 {
 	if (value & 0x100) {
-		lcd_cmd(value);
+		lcdCmd(value);
 	} else {
-		lcd_data(value);
+		lcdData(value);
 	}
 }
-static void lcd_data16(uint16_t value)
-{
-	lcd_data(value >> 8);
-	lcd_data(value);
-}
-static void lcd_set_window(int x, int y, int width, int height)
-{
-  lcd_cmd(ST7735S_CASET);
-  lcd_data16(LCD_OFFSET_X + x);
-  lcd_data16(LCD_OFFSET_X + x + width - 1);
 
-  lcd_cmd(ST7735S_RASET);
-  lcd_data16(LCD_OFFSET_Y + y);
-  lcd_data16(LCD_OFFSET_Y + y + height- 1);
-}
-void lcd_copy(void)
+/************************************************************************
+* Funkcja: lcdData16()
+*
+* Cel: Wysyła 16-bitową wartość jako dwa bajty
+* Parametry:
+*   - value: 16-bitowa wartość do wysłania
+* Korzysta z:
+*   - lcd_data: wysyłanie pojedynczych bajtów
+************************************************************************/
+static void lcdData16(uint16_t value)
 {
-	lcd_set_window(0, 0, LCD_WIDTH, LCD_HEIGHT);
-	lcd_cmd(ST7735S_RAMWR);
+	lcdData(value >> 8);
+	lcdData(value);
+}
+
+/************************************************************************
+* Funkcja: lcdSetWindow()
+*
+* Cel: Ustawia okno do zapisu na wyświetlaczu
+* Parammetry:
+*   - x, y: Współrzędne początkowe okna
+*   - width, height: Szerokość i wysokość okna
+* Korzysta z:
+*   - lcd_cmd: wysyłanie komend CASET i RASET
+*   - lcd_data16: wysyłanie współrzędnych
+************************************************************************/
+static void lcdSetWindow(int x, int y, int width, int height)
+{
+  lcdCmd(ST7735S_CASET);
+  lcdData16(LCD_OFFSET_X + x);
+  lcdData16(LCD_OFFSET_X + x + width - 1);
+
+  lcdCmd(ST7735S_RASET);
+  lcdData16(LCD_OFFSET_Y + y);
+  lcdData16(LCD_OFFSET_Y + y + height- 1);
+}
+
+/************************************************************************
+* Funkcja: lcdCopy()
+*
+* Cel: Kopiuje zawartość bufora ramki do wyświetlacza
+*   1. Ustawia okno na cały wyświetlacz
+*   2. Rozpoczyna zapis do pamięci RAM wyświetlacza
+*   3. Przesyła cały bufor ramki przez SPI
+* Korzysta z:
+*   - lcd_set_window: ustawienie obszaru zapisu
+*   - HAL_SPI_Transmit: przesłanie danych
+************************************************************************/
+void lcdCopy(void)
+{
+	lcdSetWindow(0, 0, LCD_WIDTH, LCD_HEIGHT);
+	lcdCmd(ST7735S_RAMWR);
 	HAL_GPIO_WritePin(DC_GPIO_Port, DC_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET);
 	HAL_SPI_Transmit(&hspi2, (uint8_t*)frame_buffer, sizeof(frame_buffer), HAL_MAX_DELAY);
 	HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_SET);
 }
-void lcd_clear(void) {
-    lcd_set_window(0, 0, LCD_WIDTH, LCD_HEIGHT);
-    lcd_cmd(ST7735S_RAMWR);
+
+/************************************************************************
+* Funkcja: lcdClear()
+*
+* Cel: Czyści wyświetlacz (ustawia wszystkie piksele na czarny)
+*   1. Zeruje bufor ramki
+*   2. Przesyła wyzerowany bufor do wyświetlacza
+* Korzysta z:
+*   - lcd_set_window: ustawienie obszaru zapisu
+*   - HAL_SPI_Transmit: przesłanie danych
+************************************************************************/
+void lcdClear(void) {
+	lcdSetWindow(0, 0, LCD_WIDTH, LCD_HEIGHT);
+    lcdCmd(ST7735S_RAMWR);
     HAL_GPIO_WritePin(DC_GPIO_Port, DC_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET);
-
-    // Wypełnij bufor ramki kolorem czarnym
     for (int i = 0; i < LCD_WIDTH * LCD_HEIGHT; i++) {
         frame_buffer[i] = 0x0000; // Czarny kolor
     }
-
-    // Prześlij zaktualizowany bufor ramki do wyświetlacza
     HAL_SPI_Transmit(&hspi2, (uint8_t*)frame_buffer, sizeof(frame_buffer), HAL_MAX_DELAY);
     HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_SET);
 }
 
 
-//TODO zrobic zarządzanie podświetleniem
-void lcd_init(void) {
+/************************************************************************
+* Funkcja: lcdInit()
+*
+* Cel: Inicjalizuje wyświetlacz
+*   1. Wykonuje reset sprzętowy wyświetlacza
+*   2. Wysyła sekwencję inicjalizacyjną z init_table
+*   3. Wyłącza tryb uśpienia
+*   4. Włącza wyświetlacz i podświetlenie
+* Korzysta z:
+*   - lcd_send: wysyłanie komend inicjalizacyjnych
+*   - HAL_GPIO_WritePin: sterowanie pinami RST i BL
+************************************************************************/
+void lcdInit(void) {
     int i;
     HAL_GPIO_WritePin(RST_GPIO_Port, RST_Pin, GPIO_PIN_RESET);
     delay(100);
     HAL_GPIO_WritePin(RST_GPIO_Port, RST_Pin, GPIO_PIN_SET);
     delay(100);
     for (i = 0; i < sizeof(init_table) / sizeof(uint16_t); i++) {
-        lcd_send(init_table[i]);
+        lcdSend(init_table[i]);
     }
     delay(200);
-    lcd_cmd(ST7735S_SLPOUT);
+    lcdCmd(ST7735S_SLPOUT);
     delay(120);
-    lcd_cmd(ST7735S_DISPON);
+    lcdCmd(ST7735S_DISPON);
     HAL_GPIO_WritePin(BL_GPIO_Port, BL_Pin, GPIO_PIN_SET);
 }
 
-void lcd_fill_box(int x, int y, int width, int height, uint16_t color)
-{
-	lcd_set_window(x, y, width, height);
 
-	lcd_cmd(ST7735S_RAMWR);
-	for (int i = 0; i < width * height; i++)
-		lcd_data16(color);
-}
-void lcd_put_pixel(int x, int y, uint16_t color)
+/************************************************************************
+* Funkcja: lcdPutPixel()
+*
+* Cel: Ustawia kolor pojedynczego piksela w buforze ramki
+*   Zapisuje kolor do bufora ramki. Zmiana będzie widoczna
+*   dopiero po wywołaniu lcd_copy()
+* Parametry:
+*   - x, y: Współrzędne piksela
+*   - color: Kolor w formacie RGB565
+************************************************************************/
+void lcdPutPixel(int x, int y, uint16_t color)
 {
 	frame_buffer[x + y * LCD_WIDTH] = color;
 }

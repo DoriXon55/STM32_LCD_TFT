@@ -188,7 +188,9 @@ void SysTick_Handler(void)
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
-  tick++;
+
+  tick++; // zwiększanie zmiennej dla funkcji delay()
+
   /* USER CODE END SysTick_IRQn 1 */
 }
 

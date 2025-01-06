@@ -11,14 +11,23 @@ ring_buffer txRingBuffer;
 uint8_t USART_TxBuf[TX_BUFFER_SIZE];
 uint8_t USART_RxBuf[RX_BUFFER_SIZE];
 
-void ring_buffer_setup(ring_buffer* rb, uint8_t* buffer, uint32_t size)
+/************************************************************************
+* Funkcja: ringBufferSetup()
+* (Utworzenie instancji bufora)
+************************************************************************/
+void ringBufferSetup(ring_buffer* rb, uint8_t* buffer, uint32_t size)
 {
 	rb->buffer = buffer;
 	rb->readIndex = 0;
 	rb->writeIndex = 0;
-	rb->mask = size - 1; // zakładając, że zmienna size jest potęgą 2
+	rb->mask = size - 1;
 }
 
+/************************************************************************
+* Funkcja: USART_kbhit()
+* (Sprawdza czy w buforze odbiorczym znajdują się dane
+* Zwraca 1 jeśli bufor zawiera dane do odczytu)
+************************************************************************/
 uint8_t USART_kbhit(){
 	if(rxRingBuffer.writeIndex == rxRingBuffer.readIndex){
 		return 0;
@@ -27,15 +36,31 @@ uint8_t USART_kbhit(){
 	}
 }
 
+/************************************************************************
+* Funkcja: USART_getchar()
+* (Funkcja pobierająca jeden bajt z bufora odbiorczego.
+* Jeśli bufor pusty = -1
+* Jeśli jest dostępny bajt to funkcja zwraca jesgo wartość
+* oraz aktualizuje index RX_Busy tak aby wskazywał na kolejny
+* bajt do odczytu)
+************************************************************************/
 int16_t USART_getchar() {
     if (rxRingBuffer.writeIndex != rxRingBuffer.readIndex) {
         int16_t tmp = USART_RxBuf[rxRingBuffer.readIndex];
         rxRingBuffer.readIndex = (rxRingBuffer.readIndex + 1) % rxRingBuffer.mask;
         return tmp;
     }
-    return -1; // Buffer empty
+    return -1;
 }
 
+/************************************************************************
+* Funkcja: USART_getline()
+* (Pobiera linię tekstu z bufora odbiorczego aż do napotkania
+* znaku końca linii 10 lub 13.
+* Kopiuje otrzymane znaki do buffer. Jeśli linia jest długa to
+* znaki zawija w ramach bufora o maks. długośći 128 znaków (na razie)
+* 0x0A = 10 LF - Line Feed a 0x0D = 13 CR - Carriage Return znaki końca linii)
+************************************************************************/
 uint8_t USART_getline(char *buf){
 	static uint8_t buffer[128];
 	static uint8_t index = 0;
@@ -44,58 +69,31 @@ uint8_t USART_getline(char *buf){
 
 	// dopóki są dane w buforze
 	while(USART_kbhit()){
-		buffer[index] = USART_getchar(); //odczyt znaku
-		if(((buffer[index] == 0x0A)||(buffer[index] == 0x0D))) //napotyka koniec wiersza
+		buffer[index] = USART_getchar();
+		if(((buffer[index] == 0x0A)||(buffer[index] == 0x0D)))
 		{
 			buffer[index] = 0;
 			for(i = 0;i <= index; i++){
-				buf[i] = buffer[i]; //kopiowanie zawartości buffera do buf
+				buf[i] = buffer[i];
 			}
 			ret = index;
 			index = 0;
-			return ret; //zwracanie długości linii
+			return ret;
 		}else{
 			index++;
-			if(index >= sizeof(buffer)) index = 0; //jeżeli nie ma końca znaku to zawijamy
+			if(index >= sizeof(buffer)) index = 0;
 		}
 	}
 	return 0;
 }
-void USART_send(uint8_t message[]){
 
-    uint16_t i,idx = txRingBuffer.writeIndex;
-
-
-    for(i=0; message[i] != '\0'; i++){ // przenosimy tekst z wywołania funkcji USART_send do tablicy BUF_TX[]
-
-            USART_TxBuf[idx] = message[i];
-            idx++;
-            if(idx >= TX_BUFFER_SIZE) idx = 0;
-            if(idx == txRingBuffer.readIndex) txRingBuffer.readIndex++;
-            //if(busy_TX >= sizeof(BUF_TX)) busy_TX=0;
-            if(txRingBuffer.readIndex >= TX_BUFFER_SIZE) txRingBuffer.readIndex=0;
-
-    } // cały tekst ze zmienne message[] znajduje się już teraz w BUF_TX[]
-
-        __disable_irq(); //wyłączamy przerwania, bo poniżej kilka linii do zrobienia
-
-        if (txRingBuffer.readIndex == txRingBuffer.writeIndex)
-        {
-            txRingBuffer.writeIndex = idx;
-            uint8_t tmp = USART_TxBuf[txRingBuffer.readIndex];
-            txRingBuffer.readIndex++;
-            if(txRingBuffer.readIndex >= TX_BUFFER_SIZE) txRingBuffer.readIndex = 0;
-            HAL_UART_Transmit_IT(&huart2, &tmp, 1);
-
-            //HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-        }
-        else
-        {
-        	txRingBuffer.readIndex = idx;
-        }
-
-        __enable_irq(); //ponownie aktywujemy przerwania
-}
+/************************************************************************
+* Funkcja: USART_fsend()
+* (Formatuje teskt i zapisuje go do bufora nadawczego. Jeśli
+* rejest jest gotowy, funkcja inicjuje przerwanie transmisji
+* pierwszego bajru. __disable_irq() oraz __enable_irq() to
+* nic innego jak zabezpieczenie kodu przed sekcją krytyczną)
+************************************************************************/
 void USART_fsend(char* format,...){
 	char tmp_rs[128];
 	int i;
