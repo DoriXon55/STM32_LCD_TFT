@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <wchar.h>
 
 //==============================DEFINICJE FLAG=======================================
 
@@ -45,6 +46,7 @@
 #define COMMAND_OFF "OFF" //wyłączenie wyświetlacza
 
 //===================STRUKTURA DO TWORZENIA ORAZ WYSYŁANIA RAMKI====================
+
 typedef struct{
 	uint8_t frame_start;
 	uint8_t sender;
@@ -57,13 +59,13 @@ typedef struct{
 
 
 //=====================STRUKTURA DLA ODBIORU I DEKODOWANIA RAMKI=================
+// TODO zmienic na Frame a poprzednie usunąć
 typedef struct{
 	char receiver;
 	char sender;
 	char command[COMMAND_LENGTH];
 	char data[MAX_DATA_SIZE];
 } Receive_Frame;
-
 
 //====================STRUKTURA DLA ROZPOZNAWANIA KOMENDY======================
 

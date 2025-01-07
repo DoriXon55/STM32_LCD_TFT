@@ -9,7 +9,7 @@ C:/Users/doria/STM32CubeIDE/workspace_1.16.1/MIKRO_PROJECT_FINAL/hagl/include/rg
 ../hagl/src/hagl.c:220:6:hagl_draw_rectangle	32	static
 ../hagl/src/hagl.c:258:6:hagl_fill_rectangle	32	static
 ../hagl/src/hagl.c:302:9:hagl_get_glyph	40	static
-../hagl/src/hagl.c:337:9:hagl_put_char	4160	static
+../hagl/src/hagl.c:337:9:hagl_put_char	8256	static
 ../hagl/src/hagl.c:380:10:hagl_put_text	56	static
 ../hagl/src/hagl.c:413:6:hagl_blit	32	static
 ../hagl/src/hagl.c:449:6:hagl_scale_blit	48	static

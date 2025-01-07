@@ -12,8 +12,10 @@
 #include "usart.h"
 #include "main.h"
 #include "spi.h"
-
-
+#include "frame.h"
+#include <string.h>
+LCD_Buffers lcd_buffers = {0};
+static uint16_t *current_buffer = NULL;
 /************************************************************************
 * Zmienne:
 * frame_buffer - Bufor ramki przechowujący piksele wyświetlacza
@@ -25,7 +27,6 @@
 * init_table - Zawiera sekwencję komend i danych inicjalizujących wyświetlacz
 * Każda komenda jest oznaczona makrem CMD()
 ************************************************************************/
-static uint16_t frame_buffer[LCD_WIDTH * LCD_HEIGHT] = {0};
 static const uint16_t init_table[] = {
     CMD(ST7735S_FRMCTR1), 0x01, 0x2c, 0x2d,
     CMD(ST7735S_FRMCTR2), 0x01, 0x2c, 0x2d,
@@ -156,11 +157,22 @@ static void lcdSetWindow(int x, int y, int width, int height)
 ************************************************************************/
 void lcdCopy(void)
 {
-	lcdSetWindow(0, 0, LCD_WIDTH, LCD_HEIGHT);
-	lcdCmd(ST7735S_RAMWR);
-	HAL_GPIO_WritePin(DC_GPIO_Port, DC_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET);
-	HAL_SPI_Transmit_DMA(&hspi2, (uint8_t*)frame_buffer, sizeof(frame_buffer));
+    if (lcdIsBusy()) {
+        return; // Jeśli transfer DMA wciąż trwa, wyjdź
+    }
+
+    // Zamień bufory
+    uint16_t *temp = lcd_buffers.front_buffer;
+    lcd_buffers.front_buffer = lcd_buffers.back_buffer;
+    lcd_buffers.back_buffer = temp;
+    current_buffer = lcd_buffers.back_buffer;
+
+    // Rozpocznij transfer nowego front buffera
+    lcdSetWindow(0, 0, LCD_WIDTH, LCD_HEIGHT);
+    lcdCmd(ST7735S_RAMWR);
+    HAL_GPIO_WritePin(DC_GPIO_Port, DC_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET);
+    HAL_SPI_Transmit_DMA(&hspi2, (uint8_t*)lcd_buffers.front_buffer, sizeof(lcd_buffers.buffer1));
 }
 /************************************************************************
 * Funkcja: lcdClear()
@@ -173,15 +185,7 @@ void lcdCopy(void)
 *   - HAL_SPI_Transmit: przesłanie danych
 ************************************************************************/
 void lcdClear(void) {
-	lcdSetWindow(0, 0, LCD_WIDTH, LCD_HEIGHT);
-    lcdCmd(ST7735S_RAMWR);
-    HAL_GPIO_WritePin(DC_GPIO_Port, DC_Pin, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET);
-    for (int i = 0; i < LCD_WIDTH * LCD_HEIGHT; i++) {
-        frame_buffer[i] = 0x0000; // Czarny kolor
-    }
-    HAL_SPI_Transmit(&hspi2, (uint8_t*)frame_buffer, sizeof(frame_buffer), HAL_MAX_DELAY);
-    HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_SET);
+    memset(current_buffer, 0, LCD_WIDTH * LCD_HEIGHT * sizeof(uint16_t));
 }
 
 
@@ -211,6 +215,11 @@ void lcdInit(void) {
     delay(120);
     lcdCmd(ST7735S_DISPON);
     HAL_GPIO_WritePin(BL_GPIO_Port, BL_Pin, GPIO_PIN_SET);
+    lcd_buffers.front_buffer = lcd_buffers.buffer1;
+    lcd_buffers.back_buffer = lcd_buffers.buffer2;
+    current_buffer = lcd_buffers.back_buffer;
+    memset(lcd_buffers.buffer1, 0, sizeof(lcd_buffers.buffer1));
+    memset(lcd_buffers.buffer2, 0, sizeof(lcd_buffers.buffer2));
 }
 
 
@@ -226,9 +235,10 @@ void lcdInit(void) {
 ************************************************************************/
 void lcdPutPixel(int x, int y, uint16_t color)
 {
-	frame_buffer[x + y * LCD_WIDTH] = color;
+    if (x >= 0 && x < LCD_WIDTH && y >= 0 && y < LCD_HEIGHT) {
+        current_buffer[x + y * LCD_WIDTH] = color;
+    }
 }
-
 
 
 void lcdTransferDone(void)
@@ -244,3 +254,5 @@ bool lcdIsBusy(void)
 		return false;
 	}
 }
+
+

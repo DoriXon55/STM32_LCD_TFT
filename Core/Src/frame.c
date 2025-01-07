@@ -19,18 +19,13 @@
 #include "crc.h"
 
 //=========================ZMIENNE DO RAMKI=============================
-extern uint8_t USART_RxBuf[];
-extern uint8_t USART_TxBuf[];
-extern volatile int USART_TX_Empty;
-extern volatile int USART_TX_Busy;
-extern volatile int USART_RX_Empty;
-extern volatile int USART_RX_Busy;
+
 uint8_t bx[256];
 bool escape_detected = false;
 int bx_index = 0;
 bool in_frame = false;
 uint8_t received_char;
-Receive_Frame ramka;
+Receive_Frame receiveFrame;
 
 
 static bool safeCompare(const char* str1, const char* str2, size_t len)
@@ -41,9 +36,6 @@ static bool safeCompare(const char* str1, const char* str2, size_t len)
 	}
 	return memcmp(str1, str2, len) == 0;
 }
-
-
-
 
 /************************************************************************
 * Funkcja: parseColor()
@@ -621,6 +613,7 @@ size_t byteStuffing(uint8_t *input, size_t input_len, uint8_t *output) {
 *   5. Przygotowuje payload
 *   6. Wykonuje byte stuffing
 *   7. Wysyła ramkę
+*   TODO zmienic na ReceiveFrame
 ************************************************************************/
 void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const char *format, ...) {
     Frame frame = {0};
@@ -628,39 +621,71 @@ void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const c
     frame.receiver = receiver;
     strncpy((char *)frame.command, command, COMMAND_LENGTH);
 
+    // Użycie dynamicznej alokacji do przechowywania danych sformatowanych
+    char *formatted_data = (char *)malloc(MAX_DATA_SIZE);
+    if (formatted_data == NULL) {
+        // Obsługa błędu alokacji pamięci
+        return;
+    }
+
     va_list args;
     va_start(args, format);
-    vsnprintf((char *)frame.data, MAX_DATA_SIZE, format, args);
+    vsnprintf(formatted_data, MAX_DATA_SIZE, format, args);
     va_end(args);
 
-    size_t data_len = strlen((const char *)frame.data);
+    size_t data_len = strlen(formatted_data);
 
+    // Użycie dynamicznej alokacji do obliczeń CRC
     size_t crc_input_len = 2 + COMMAND_LENGTH + data_len;
-    uint8_t crc_input[crc_input_len];
+    uint8_t *crc_input = (uint8_t *)malloc(crc_input_len);
+    if (crc_input == NULL) {
+        // Obsługa błędu alokacji pamięci
+        free(formatted_data);
+        return;
+    }
+
     crc_input[0] = frame.sender;
     crc_input[1] = frame.receiver;
     memcpy(crc_input + 2, frame.command, COMMAND_LENGTH);
-    memcpy(crc_input + 2 + COMMAND_LENGTH, frame.data, data_len);
+    memcpy(crc_input + 2 + COMMAND_LENGTH, formatted_data, data_len);
 
     char crc_output[2];
     calculateCrc16(crc_input, crc_input_len, crc_output);
+    free(crc_input);  // Zwolnienie pamięci po zakończeniu używania
 
-    char crc_hex[5];
-    snprintf(crc_hex, sizeof(crc_hex), "%02X%02X", (uint8_t)crc_output[0], (uint8_t)crc_output[1]);
+    // Użycie dynamicznej alokacji do przechowywania ramki
+    size_t raw_payload_len = 2 + COMMAND_LENGTH + data_len + 4;
+    uint8_t *raw_payload = (uint8_t *)malloc(raw_payload_len);
+    if (raw_payload == NULL) {
+        free(formatted_data);
+        return;
+    }
 
-    uint8_t raw_payload[2 + COMMAND_LENGTH + data_len + 4];
     raw_payload[0] = frame.sender;
     raw_payload[1] = frame.receiver;
     memcpy(raw_payload + 2, frame.command, COMMAND_LENGTH);
-    memcpy(raw_payload + 2 + COMMAND_LENGTH, frame.data, data_len);
+    memcpy(raw_payload + 2 + COMMAND_LENGTH, formatted_data, data_len);
+
+    char crc_hex[5];
+    snprintf(crc_hex, sizeof(crc_hex), "%02X%02X", (uint8_t)crc_output[0], (uint8_t)crc_output[1]);
     memcpy(raw_payload + 2 + COMMAND_LENGTH + data_len, crc_hex, 4);
+    free(formatted_data);  // Zwolnienie pamięci po zakończeniu używania
 
-    uint8_t stuffed_payload[512];
-    size_t stuffed_len = byteStuffing(raw_payload, 2 + COMMAND_LENGTH + data_len + 4, stuffed_payload);
+    // Użycie dynamicznej alokacji do przechowywania danych po byte stuffing
+    uint8_t *stuffed_payload = (uint8_t *)malloc(512);  // Maksymalny rozmiar bufora
+    if (stuffed_payload == NULL) {
+        free(raw_payload);
+        return;
+    }
 
+    size_t stuffed_len = byteStuffing(raw_payload, raw_payload_len, stuffed_payload);
+    free(raw_payload);  // Zwolnienie pamięci po zakończeniu używania
+
+    // Wysyłanie ramki przez UART
     USART_sendFrame(stuffed_payload, stuffed_len);
     USART_fsend("\r\n");
 
+    free(stuffed_payload);  // Zwolnienie pamięci po zakończeniu używania
 }
 
 /************************************************************************
@@ -751,9 +776,9 @@ void processReceivedChar(uint8_t received_char) {
         }
     } else if (received_char == FRAME_END) {
         if (in_frame) {
-            if (decodeFrame(bx, &ramka, bx_index)) {
+            if (decodeFrame(bx, &receiveFrame, bx_index)) {
                 prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "GOOD");
-                handleCommand(&ramka);
+                handleCommand(&receiveFrame);
             } else {
                 prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL");
             }
@@ -837,28 +862,28 @@ void handleCommand(Receive_Frame *frame) {
     };
 
     for (int i = 0; i < COMMAND_COUNT; i++) {
-        if (safeCompare(frame->command, commandTable[i].command, COMMAND_LENGTH)) {
-            // Special case for OFF command
-            if (safeCompare(commandTable[i].command, "OFF", COMMAND_LENGTH)) {
-                size_t data_len = 1; // Expected length for OFF command data
-                if (frame->data[0] != '\0' && frame->data[1] == '\0') { // Check if data is exactly 1 character
+            if (safeCompare(frame->command, commandTable[i].command, COMMAND_LENGTH)) {
+                if (safeCompare(commandTable[i].command, "OFF", COMMAND_LENGTH)) {
                     lcdClear();
                     commandTable[i].function(frame);
-                    lcdCopy();
+                    if (!lcdIsBusy()) {
+                        lcdCopy();
+                    }
                     clearFrame(frame);
                     return;
                 }
-            }
 
-            int x, y;
-            if (parseCoordinates(frame->data, &x, &y)) {
-                if (isWithinBounds(x, y)) {
-                    lcdClear();
-                    commandTable[i].function(frame);
-                    lcdCopy();
-                    clearFrame(frame);
-                    return;
-                } else {
+                int x, y;
+                if (parseCoordinates(frame->data, &x, &y)) {
+                    if (isWithinBounds(x, y)) {
+                        lcdClear();
+                        commandTable[i].function(frame);
+                        if (!lcdIsBusy()) {
+                            lcdCopy();
+                        }
+                        clearFrame(frame);
+                        return;
+                    } else {
                     prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "DISPLAY_AREA");
                     return;
                 }

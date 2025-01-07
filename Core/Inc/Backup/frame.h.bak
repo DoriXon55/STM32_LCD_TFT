@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <wchar.h>
 
 //==============================DEFINICJE FLAG=======================================
 
@@ -63,7 +64,6 @@ typedef struct{
 	char command[COMMAND_LENGTH];
 	char data[MAX_DATA_SIZE];
 } Receive_Frame;
-
 
 //====================STRUKTURA DLA ROZPOZNAWANIA KOMENDY======================
 

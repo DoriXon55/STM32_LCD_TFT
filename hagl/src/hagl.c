@@ -337,7 +337,7 @@ uint8_t hagl_get_glyph(wchar_t code, color_t color, bitmap_t *bitmap, const uint
 uint8_t hagl_put_char(wchar_t code, int16_t x0, int16_t y0, color_t color, const uint8_t *font)
 {
     uint8_t set, status;
-    color_t buffer[HAGL_CHAR_BUFFER_SIZE];
+    color_t *buffer[HAGL_CHAR_BUFFER_SIZE];
     bitmap_t bitmap;
     fontx_glyph_t glyph;
 

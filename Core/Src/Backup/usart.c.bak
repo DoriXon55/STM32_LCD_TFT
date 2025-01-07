@@ -18,11 +18,11 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-
 #include "usart.h"
-#include "USART_ringbuffer.h"
 
 /* USER CODE BEGIN 0 */
+#include "USART_ringbuffer.h"
+#include "lcd.h"
 
 extern ring_buffer rxRingBuffer;
 extern ring_buffer txRingBuffer;
@@ -47,6 +47,7 @@ extern volatile int USART_RX_Busy;
 ************************************************************************/
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
    if(huart==&huart2){
+	   lcdTransferDone();
 	   if(txRingBuffer.writeIndex!=txRingBuffer.readIndex){
 		   uint8_t tmp = USART_TxBuf[txRingBuffer.readIndex];
 		   txRingBuffer.readIndex++;
