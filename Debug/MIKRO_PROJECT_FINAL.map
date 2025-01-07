@@ -5954,36 +5954,36 @@ LOAD D:/STM32CubeIDE_1.16.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.extern
  .debug_macro   0x000290c0       0x1c ./hagl/src/hagl.o
  .debug_macro   0x000290dc       0x22 ./hagl/src/hagl.o
 
-.debug_line     0x00000000    0x16be3
+.debug_line     0x00000000    0x16be4
  .debug_line    0x00000000      0xb88 ./Core/Src/USART_ringbuffer.o
  .debug_line    0x00000b88      0x640 ./Core/Src/crc.o
  .debug_line    0x000011c8      0x73f ./Core/Src/dma.o
  .debug_line    0x00001907     0x1056 ./Core/Src/frame.o
  .debug_line    0x0000295d      0x786 ./Core/Src/gpio.o
- .debug_line    0x000030e3      0x8d6 ./Core/Src/lcd.o
- .debug_line    0x000039b9      0xb02 ./Core/Src/main.o
- .debug_line    0x000044bb      0x7f3 ./Core/Src/spi.o
- .debug_line    0x00004cae      0x744 ./Core/Src/stm32l4xx_hal_msp.o
- .debug_line    0x000053f2      0x839 ./Core/Src/stm32l4xx_it.o
- .debug_line    0x00005c2b      0x8a3 ./Core/Src/syscalls.o
- .debug_line    0x000064ce      0x574 ./Core/Src/sysmem.o
- .debug_line    0x00006a42      0x7de ./Core/Src/system_stm32l4xx.o
- .debug_line    0x00007220      0x9f0 ./Core/Src/usart.o
- .debug_line    0x00007c10       0x7a ./Core/Startup/startup_stm32l476rgtx.o
- .debug_line    0x00007c8a      0xb39 ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.o
- .debug_line    0x000087c3      0xd02 ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_cortex.o
- .debug_line    0x000094c5      0xd3e ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma.o
- .debug_line    0x0000a203      0xbc5 ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_gpio.o
- .debug_line    0x0000adc8      0xd2b ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr_ex.o
- .debug_line    0x0000baf3      0xfb2 ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc.o
- .debug_line    0x0000caa5     0x1524 ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc_ex.o
- .debug_line    0x0000dfc9     0x200f ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_spi.o
- .debug_line    0x0000ffd8     0x324b ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart.o
- .debug_line    0x00013223      0xc3f ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart_ex.o
- .debug_line    0x00013e62      0x99f ./hagl/src/bitmap.o
- .debug_line    0x00014801      0x5df ./hagl/src/clip.o
- .debug_line    0x00014de0      0x6b0 ./hagl/src/fontx.o
- .debug_line    0x00015490     0x1753 ./hagl/src/hagl.o
+ .debug_line    0x000030e3      0x8d7 ./Core/Src/lcd.o
+ .debug_line    0x000039ba      0xb02 ./Core/Src/main.o
+ .debug_line    0x000044bc      0x7f3 ./Core/Src/spi.o
+ .debug_line    0x00004caf      0x744 ./Core/Src/stm32l4xx_hal_msp.o
+ .debug_line    0x000053f3      0x839 ./Core/Src/stm32l4xx_it.o
+ .debug_line    0x00005c2c      0x8a3 ./Core/Src/syscalls.o
+ .debug_line    0x000064cf      0x574 ./Core/Src/sysmem.o
+ .debug_line    0x00006a43      0x7de ./Core/Src/system_stm32l4xx.o
+ .debug_line    0x00007221      0x9f0 ./Core/Src/usart.o
+ .debug_line    0x00007c11       0x7a ./Core/Startup/startup_stm32l476rgtx.o
+ .debug_line    0x00007c8b      0xb39 ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.o
+ .debug_line    0x000087c4      0xd02 ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_cortex.o
+ .debug_line    0x000094c6      0xd3e ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma.o
+ .debug_line    0x0000a204      0xbc5 ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_gpio.o
+ .debug_line    0x0000adc9      0xd2b ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr_ex.o
+ .debug_line    0x0000baf4      0xfb2 ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc.o
+ .debug_line    0x0000caa6     0x1524 ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc_ex.o
+ .debug_line    0x0000dfca     0x200f ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_spi.o
+ .debug_line    0x0000ffd9     0x324b ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart.o
+ .debug_line    0x00013224      0xc3f ./Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_uart_ex.o
+ .debug_line    0x00013e63      0x99f ./hagl/src/bitmap.o
+ .debug_line    0x00014802      0x5df ./hagl/src/clip.o
+ .debug_line    0x00014de1      0x6b0 ./hagl/src/fontx.o
+ .debug_line    0x00015491     0x1753 ./hagl/src/hagl.o
 
 .debug_str      0x00000000    0xee044
  .debug_str     0x00000000    0xe662f ./Core/Src/USART_ringbuffer.o

@@ -62,6 +62,10 @@ static const ColorMap color_map[] = {
     {"BLACK", BLACK}
 };
 
+
+
+
+
 //=================PRZESUNIĘCIE PONIEWAŻ STEROWNIK 162x132px OBSŁUGUJE===========
 #define LCD_OFFSET_X  1
 #define LCD_OFFSET_Y  2
