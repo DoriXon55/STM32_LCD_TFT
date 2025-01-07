@@ -1,5 +1,5 @@
-../Core/Src/usart.c:48:6:HAL_UART_TxCpltCallback	24	static
-../Core/Src/usart.c:72:6:HAL_UART_RxCpltCallback	16	static
-../Core/Src/usart.c:86:6:MX_USART2_UART_Init	8	static
-../Core/Src/usart.c:118:6:HAL_UART_MspInit	184	static
-../Core/Src/usart.c:162:6:HAL_UART_MspDeInit	16	static
+../Core/Src/usart.c:44:6:HAL_UART_TxCpltCallback	24	static
+../Core/Src/usart.c:68:6:HAL_UART_RxCpltCallback	16	static
+../Core/Src/usart.c:82:6:MX_USART2_UART_Init	8	static
+../Core/Src/usart.c:114:6:HAL_UART_MspInit	184	static
+../Core/Src/usart.c:158:6:HAL_UART_MspDeInit	16	static

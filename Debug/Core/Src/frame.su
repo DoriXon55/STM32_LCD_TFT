@@ -11,7 +11,7 @@
 ../Core/Src/frame.c:484:6:isWithinBounds	16	static
 ../Core/Src/frame.c:512:6:parseCoordinates	160	static
 ../Core/Src/frame.c:565:8:byteStuffing	32	static
-../Core/Src/frame.c:617:6:prepareFrame	220	static
-../Core/Src/frame.c:715:6:decodeFrame	32	static
-../Core/Src/frame.c:767:6:processReceivedChar	16	static
-../Core/Src/frame.c:850:6:handleCommand	88	static
+../Core/Src/frame.c:618:6:prepareFrame	220	static
+../Core/Src/frame.c:714:6:decodeFrame	32	static
+../Core/Src/frame.c:766:6:processReceivedChar	16	static
+../Core/Src/frame.c:849:6:handleCommand	88	static

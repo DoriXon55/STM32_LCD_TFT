@@ -336,38 +336,56 @@ uint8_t hagl_get_glyph(wchar_t code, color_t color, bitmap_t *bitmap, const uint
 
 uint8_t hagl_put_char(wchar_t code, int16_t x0, int16_t y0, color_t color, const uint8_t *font)
 {
-    uint8_t set, status;
-    color_t *buffer[HAGL_CHAR_BUFFER_SIZE];
-    bitmap_t bitmap;
+    uint8_t status;
+    bitmap_t bitmap = {0};  // Inicjalizacja inline
     fontx_glyph_t glyph;
 
+    // Sprawdzenie statusu glifu
     status = fontx_glyph(&glyph, code, font);
-
     if (0 != status) {
         return 0;
     }
 
-    bitmap.width = glyph.width,
-    bitmap.height = glyph.height,
-    bitmap.depth = DISPLAY_DEPTH,
-
-    bitmap_init(&bitmap, (uint8_t *)buffer);
-
-    color_t *ptr = (color_t *) bitmap.buffer;
-
-    for (uint8_t y = 0; y < glyph.height; y++) {
-        for (uint8_t x = 0; x < glyph.width; x++) {
-            set = *(glyph.buffer) & (0x80 >> (x % 8));
-            if (set) {
-                *(ptr++) = color;
-            } else {
-                *(ptr++) = 0x0000;
-            }
-        }
-        glyph.buffer += glyph.pitch;
+    // Dynamiczna alokacja bufora
+    color_t *buffer = (color_t *)malloc(glyph.width * glyph.height * sizeof(color_t));
+    if (!buffer) {
+        return 0;  // Obsługa błędu alokacji
     }
 
+    // Inicjalizacja bitmapy
+    bitmap.width = glyph.width;
+    bitmap.height = glyph.height;
+    bitmap.depth = DISPLAY_DEPTH;
+    bitmap.buffer = (uint8_t *)buffer;
+
+    // Wypełnianie bufora
+    uint8_t current_byte;
+    uint8_t bit_mask;
+    color_t *ptr = buffer;
+    const uint8_t *glyph_ptr = glyph.buffer;
+
+    for (uint8_t y = 0; y < glyph.height; y++) {
+        current_byte = *glyph_ptr;
+        bit_mask = 0x80;
+
+        for (uint8_t x = 0; x < glyph.width; x++) {
+            *ptr++ = (current_byte & bit_mask) ? color : 0x0000;
+            bit_mask >>= 1;
+            if (bit_mask == 0) {
+                bit_mask = 0x80;
+                current_byte = *(++glyph_ptr);
+            }
+        }
+        if (bit_mask != 0x80) {
+            glyph_ptr++;
+        }
+    }
+
+    // Wyświetlenie znaku
     hagl_blit(x0, y0, &bitmap);
+
+    // Zwolnienie bufora
+    free(buffer);
 
     return bitmap.width;
 }
@@ -407,7 +425,6 @@ uint16_t hagl_put_text(const wchar_t *str, int16_t x0, int16_t y0, color_t color
  * parameter is left out intentionally to keep the API simpler. If you need
  * configurable source and destination see the file blit.c.
  *
- * TODO: Handle transparency.
  */
 
 void hagl_blit(int16_t x0, int16_t y0, bitmap_t *source) {

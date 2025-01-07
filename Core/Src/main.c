@@ -51,12 +51,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-extern uint8_t USART_RxBuf[];
-extern uint8_t USART_TxBuf[];
-extern volatile int USART_TX_Empty;
-extern volatile int USART_RX_Busy;
-extern volatile int USART_RX_Empty;
-extern volatile int USART_TX_Busy;
+
 volatile uint32_t tick;
 
 /* USER CODE END PV */

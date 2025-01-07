@@ -683,8 +683,6 @@ void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const c
 
     // Wysyłanie ramki przez UART
     USART_sendFrame(stuffed_payload, stuffed_len);
-    USART_fsend("\r\n");
-
     free(stuffed_payload);  // Zwolnienie pamięci po zakończeniu używania
 }
 

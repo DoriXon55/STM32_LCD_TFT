@@ -28,10 +28,6 @@ extern ring_buffer rxRingBuffer;
 extern ring_buffer txRingBuffer;
 extern uint8_t USART_RxBuf[];
 extern uint8_t USART_TxBuf[];
-extern volatile int USART_TX_Empty;
-extern volatile int USART_TX_Busy;
-extern volatile int USART_RX_Empty;
-extern volatile int USART_RX_Busy;
 
 /************************************************************************
 * Funkcja: HAL_UART_TxCpltCallback()
