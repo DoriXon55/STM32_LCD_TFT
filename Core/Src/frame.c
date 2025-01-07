@@ -25,7 +25,7 @@ extern volatile int USART_TX_Empty;
 extern volatile int USART_TX_Busy;
 extern volatile int USART_RX_Empty;
 extern volatile int USART_RX_Busy;
-uint8_t bx[270];
+uint8_t bx[256];
 bool escape_detected = false;
 int bx_index = 0;
 bool in_frame = false;
