@@ -28,7 +28,7 @@ Core/Src/USART_ringbuffer.o: ../Core/Src/USART_ringbuffer.c \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_spi_ex.h \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart.h \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart_ex.h \
- ../Core/Inc/usart.h ../Core/Inc/main.h
+ ../Core/Inc/usart.h ../Core/Inc/main.h ../Core/Inc/frame.h
 ../Core/Inc/USART_ringbuffer.h:
 ../Core/Inc/main.h:
 ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal.h:
@@ -61,3 +61,4 @@ Core/Src/USART_ringbuffer.o: ../Core/Src/USART_ringbuffer.c \
 ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart_ex.h:
 ../Core/Inc/usart.h:
 ../Core/Inc/main.h:
+../Core/Inc/frame.h:

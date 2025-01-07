@@ -29,4 +29,4 @@ int16_t USART_getchar(void);
 uint8_t USART_getline(char *buf);
 void USART_fsend(char* format, ...);
 void ringBufferSetup(ring_buffer* rb, uint8_t* buffer, uint32_t size);
-
+void USART_sendFrame(const uint8_t* data, size_t length);

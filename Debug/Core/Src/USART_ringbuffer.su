@@ -1,5 +1,6 @@
-../Core/Src/USART_ringbuffer.c:18:6:ringBufferSetup	24	static
-../Core/Src/USART_ringbuffer.c:31:9:USART_kbhit	4	static
-../Core/Src/USART_ringbuffer.c:47:9:USART_getchar	16	static
-../Core/Src/USART_ringbuffer.c:64:9:USART_getline	24	static
-../Core/Src/USART_ringbuffer.c:97:6:USART_fsend	152	static,ignoring_inline_asm
+../Core/Src/USART_ringbuffer.c:19:6:ringBufferSetup	24	static
+../Core/Src/USART_ringbuffer.c:32:9:USART_kbhit	4	static
+../Core/Src/USART_ringbuffer.c:48:9:USART_getchar	16	static
+../Core/Src/USART_ringbuffer.c:65:9:USART_getline	24	static
+../Core/Src/USART_ringbuffer.c:98:6:USART_fsend	288	static,ignoring_inline_asm
+../Core/Src/USART_ringbuffer.c:125:6:USART_send_buffer	32	static,ignoring_inline_asm

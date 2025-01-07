@@ -136,12 +136,8 @@ static void resetFrameState() {
 ************************************************************************/
 bool parseParameters(const char* data, const char* format, ...) {
     if (!data || !format) {
-        USART_fsend("Null input data or format\r\n");
         return false;
     }
-
-    USART_fsend("Parsing: data='%s', format='%s'\r\n", data, format);
-
     va_list args;
     va_start(args, format);
 
@@ -151,33 +147,28 @@ bool parseParameters(const char* data, const char* format, ...) {
     size_t token_idx;
 
     while (*fmt_ptr) {
-        // Pomiń białe znaki
+
         while (isspace(*data_ptr)) data_ptr++;
 
         token_idx = 0;
 
-        // Zbierz token do następnego przecinka lub końca stringa
+
         while (*data_ptr && *data_ptr != ',' && token_idx < 49) {
             token[token_idx++] = *data_ptr++;
         }
         token[token_idx] = '\0';
 
-        // Pomiń przecinek jeśli istnieje
+
         if (*data_ptr == ',') data_ptr++;
 
-        // Usuń końcowe białe znaki
         while (token_idx > 0 && isspace(token[token_idx - 1])) {
             token[--token_idx] = '\0';
         }
-
-        USART_fsend("Processing token: '%s' with format '%c'\r\n", token, *fmt_ptr);
-
         switch (*fmt_ptr) {
             case 'u': {
                 char* endptr;
                 unsigned long val = strtoul(token, &endptr, 10);
                 if (*endptr || val > 255) {
-                    USART_fsend("Invalid unsigned int: %s\r\n", token);
                     va_end(args);
                     return false;
                 }
@@ -187,7 +178,6 @@ bool parseParameters(const char* data, const char* format, ...) {
             case 's': {
                 Color_t* color_ptr = va_arg(args, Color_t*);
                 if (!parseColor(token, color_ptr)) {
-                    USART_fsend("Invalid color: %s\r\n", token);
                     va_end(args);
                     return false;
                 }
@@ -200,14 +190,11 @@ bool parseParameters(const char* data, const char* format, ...) {
                 break;
             }
             default:
-                USART_fsend("Unknown format: %c\r\n", *fmt_ptr);
                 va_end(args);
                 return false;
         }
-
         fmt_ptr++;
     }
-
     va_end(args);
     return !*data_ptr;
 }
@@ -407,7 +394,7 @@ static void executeONN(Receive_Frame *frame)
 {
     char text[50] = {0};
     wchar_t wtext[50] = {0};
-    uint8_t x = 0, y = 0, fontSize = 0;
+    uint8_t x = 0, y = 0, fontSize = 0, speed = 0;
     Color_t color = BLACK;
 
     if (!parseParameters(frame->data, "uuust", &x, &y, &fontSize, &color, text)) {
@@ -655,13 +642,9 @@ void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const c
     uint8_t stuffed_payload[512];
     size_t stuffed_len = byteStuffing(raw_payload, 2 + COMMAND_LENGTH + data_len + 4, stuffed_payload);
 
-    USART_fsend("%c", FRAME_START);
-    for (size_t i = 0; i < stuffed_len; i++) {
-        USART_fsend("%c", stuffed_payload[i]);
-        delay(10);
-    }
-    USART_fsend("%c", FRAME_END);
+    USART_sendFrame(stuffed_payload, stuffed_len);
     USART_fsend("\r\n");
+
 }
 
 /************************************************************************
@@ -847,9 +830,6 @@ void handleCommand(Receive_Frame *frame)
 	        	}
 	            int x, y;
 	            if (parseCoordinates(frame->data, &x, &y)) {
-	            	USART_fsend("%s", frame->data);
-	            	USART_fsend("\r\n");
-
 	                if (isWithinBounds(x, y)) {
 	                    lcdClear();
 	                    commandTable[i].function(frame);
@@ -857,11 +837,11 @@ void handleCommand(Receive_Frame *frame)
 	                    clearFrame(frame);
 	                    return;
 	                } else {
-	                    prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " DISPLAY_AREA");
+	                    prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "DISPLAY_AREA");
 	                    return;
 	                }
 	            } else {
-	                prepareFrame(STM32_ADDR, PC_ADDR, "BCK", " NOT_RECOGNIZED%s", frame->data);
+	                prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
 	                return;
 	            }
 	        }
