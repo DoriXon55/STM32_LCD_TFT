@@ -33,6 +33,17 @@ uint8_t received_char;
 Receive_Frame ramka;
 
 
+static bool safeCompare(const char* str1, const char* str2, size_t len)
+{
+	if(str1 == NULL || str2 == NULL)
+	{
+		return false;
+	}
+	return memcmp(str1, str2, len) == 0;
+}
+
+
+
 
 /************************************************************************
 * Funkcja: parseColor()
@@ -62,8 +73,13 @@ Receive_Frame ramka;
 *   - value: wartość Color_t w formacie RGB565
 ************************************************************************/
 bool parseColor(const char* color_name, Color_t* color) {
+    if (color_name == NULL || color == NULL) {
+        return false;
+    }
+
     for (int i = 0; i < sizeof(color_map) / sizeof(ColorMap); i++) {
-        if (strcmp(color_name, color_map[i].name) == 0) {
+        size_t color_len = strlen(color_map[i].name); // Get the expected color name length
+        if (safeCompare(color_name, color_map[i].name, color_len)) {
             *color = color_map[i].value;
             return true;
         }
@@ -722,6 +738,7 @@ bool decodeFrame(uint8_t *bx, Receive_Frame *frame, uint8_t len) {
 *   - Nieprawidłowe sekwencje escape
 *   - Przepełnienie bufora
 *   - Nieoczekiwane znaki początku/końca
+*   TODO zmienic dekodowanie ramki
 ************************************************************************/
 void processReceivedChar(uint8_t received_char) {
     if (received_char == FRAME_START) {
@@ -772,10 +789,6 @@ void processReceivedChar(uint8_t received_char) {
     }
 }
 
-
-
-
-
 /************************************************************************
 * Funkcja: handleCommand()
 * Cel: Rozpoznaje i wykonuje komendy z ramki
@@ -810,42 +823,50 @@ void processReceivedChar(uint8_t received_char) {
 *   - Nieprawidłowe współrzędne
 *   - Przekroczenie obszaru wyświetlacza
 ************************************************************************/
-void handleCommand(Receive_Frame *frame)
-{
-	CommandEntry commandTable[COMMAND_COUNT] = {
-			{"ONK", executeONK},
-			{"ONP", executeONP},
-			{"ONT", executeONT},
-			{"ONN", executeONN},
-			{"OFF", executeOFF}
-	};
-	for (int i = 0; i < COMMAND_COUNT; i++) {
-	        if (strncmp(frame->command, commandTable[i].command, COMMAND_LENGTH) == 0) {
-	        	if (strcmp(commandTable[i].command, "OFF") == 0 && strlen(frame->data) == 1) {
-	        	                lcdClear();
-	        	                commandTable[i].function(frame);
-	        	                lcdCopy();
-	        	                clearFrame(frame);
-	        	                return;
-	        	}
-	            int x, y;
-	            if (parseCoordinates(frame->data, &x, &y)) {
-	                if (isWithinBounds(x, y)) {
-	                    lcdClear();
-	                    commandTable[i].function(frame);
-	                    lcdCopy();
-	                    clearFrame(frame);
-	                    return;
-	                } else {
-	                    prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "DISPLAY_AREA");
-	                    return;
-	                }
-	            } else {
-	                prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
-	                return;
-	            }
-	        }
-	    }
-	    prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->command);
-}
+void handleCommand(Receive_Frame *frame) {
+    if (frame == NULL) {
+        return;
+    }
 
+    CommandEntry commandTable[COMMAND_COUNT] = {
+        {"ONK", executeONK},
+        {"ONP", executeONP},
+        {"ONT", executeONT},
+        {"ONN", executeONN},
+        {"OFF", executeOFF}
+    };
+
+    for (int i = 0; i < COMMAND_COUNT; i++) {
+        if (safeCompare(frame->command, commandTable[i].command, COMMAND_LENGTH)) {
+            // Special case for OFF command
+            if (safeCompare(commandTable[i].command, "OFF", COMMAND_LENGTH)) {
+                size_t data_len = 1; // Expected length for OFF command data
+                if (frame->data[0] != '\0' && frame->data[1] == '\0') { // Check if data is exactly 1 character
+                    lcdClear();
+                    commandTable[i].function(frame);
+                    lcdCopy();
+                    clearFrame(frame);
+                    return;
+                }
+            }
+
+            int x, y;
+            if (parseCoordinates(frame->data, &x, &y)) {
+                if (isWithinBounds(x, y)) {
+                    lcdClear();
+                    commandTable[i].function(frame);
+                    lcdCopy();
+                    clearFrame(frame);
+                    return;
+                } else {
+                    prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "DISPLAY_AREA");
+                    return;
+                }
+            } else {
+                prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
+                return;
+            }
+        }
+    }
+    prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->command);
+}

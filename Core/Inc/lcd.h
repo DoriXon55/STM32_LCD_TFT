@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdint.h>
-
+#include <stdbool.h>
 //=======MACRO POMAGAJĄCE W DETEKCJI CZY JEST TO KOMENDA CZY DANE==========
 #define CMD(x)			((x) | 0x100)
 
@@ -71,7 +71,8 @@ static const ColorMap color_map[] = {
 void lcdCopy(void);
 void lcdClear(void);
 void lcdPutPixel(int x, int y, uint16_t color);
-
+void lcdTransferDone();
+bool lcdIsBusy();
 
 //==========================INICJALIZACJA WYŚWIETLACZA============================
 

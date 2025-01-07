@@ -158,10 +158,8 @@ void lcdCopy(void)
 	lcdCmd(ST7735S_RAMWR);
 	HAL_GPIO_WritePin(DC_GPIO_Port, DC_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_RESET);
-	HAL_SPI_Transmit(&hspi2, (uint8_t*)frame_buffer, sizeof(frame_buffer), HAL_MAX_DELAY);
-	HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_SET);
+	HAL_SPI_Transmit_DMA(&hspi2, (uint8_t*)frame_buffer, sizeof(frame_buffer));
 }
-
 /************************************************************************
 * Funkcja: lcdClear()
 *
@@ -227,4 +225,20 @@ void lcdInit(void) {
 void lcdPutPixel(int x, int y, uint16_t color)
 {
 	frame_buffer[x + y * LCD_WIDTH] = color;
+}
+
+
+
+void lcdTransferDone(void)
+{
+	HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_SET);
+}
+bool lcdIsBusy(void)
+{
+	if(HAL_SPI_GetState(&hspi2) == HAL_SPI_STATE_BUSY)
+	{
+		return true;
+	} else {
+		return false;
+	}
 }

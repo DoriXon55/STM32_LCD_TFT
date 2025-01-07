@@ -3,4 +3,4 @@
 ../Core/Src/USART_ringbuffer.c:48:9:USART_getchar	2
 ../Core/Src/USART_ringbuffer.c:65:9:USART_getline	6
 ../Core/Src/USART_ringbuffer.c:98:6:USART_fsend	6
-../Core/Src/USART_ringbuffer.c:125:6:USART_send_buffer	8
+../Core/Src/USART_ringbuffer.c:150:6:USART_sendFrame	8

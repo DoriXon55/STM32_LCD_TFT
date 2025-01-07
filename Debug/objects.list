@@ -1,5 +1,6 @@
 "./Core/Src/USART_ringbuffer.o"
 "./Core/Src/crc.o"
+"./Core/Src/dma.o"
 "./Core/Src/frame.o"
 "./Core/Src/gpio.o"
 "./Core/Src/lcd.o"

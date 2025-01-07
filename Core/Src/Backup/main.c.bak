@@ -21,7 +21,7 @@
 #include "spi.h"
 #include "usart.h"
 #include "gpio.h"
-#include <stdbool.h>
+#include "stm32l4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "spi.h"
@@ -57,12 +57,7 @@ extern volatile int USART_RX_Busy;
 extern volatile int USART_RX_Empty;
 extern volatile int USART_TX_Busy;
 volatile uint32_t tick;
-char bx[128];
-bool escape_detected = false;
-uint8_t bx_index = 0;
-bool in_frame = false;
-char received_char;
-Receive_Frame ramka;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -74,14 +69,47 @@ void delay(uint32_t delayMs);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+
+
+/************************************************************************
+* Funkcja: delay()
+* Cel: Implementuje opóźnienie w milisekundach
+* Funkcja realizuje opóźnienie blokujące wykorzystując globalny licznik
+* systemowy 'tick'. Czeka aż licznik osiągnie wartość startową + żądane
+* opóźnienie.
+*
+* Parametry:
+*   - delayMs: Liczba milisekund do odczekania
+
+* Korzysta z:
+*   - tick: Globalna zmienna zwiększana w przerwaniu systemowym
+************************************************************************/
 void delay(uint32_t delayMs){
 	uint32_t startTime = tick;
-	while(tick < (startTime+delayMs)); //niestety blokuje działanie programu ale na szczęście nie przerwań
+	while(tick < (startTime+delayMs));
 }
-void reset_frame_state() {
-    in_frame = false;
-    escape_detected = false;
-    bx_index = 0;
+
+
+/************************************************************************
+* Funkcja: waitForFrame()
+*
+* Cel: Obsługa odbioru danych z UART podczas oczekiwania na ramkę
+* Funkcja sprawdza czy są dostępne dane w buforze UART.
+* Jeśli tak, pobiera jeden znak i przekazuje go do funkcji
+* przetwarzającej ramkę komunikacyjną.
+*
+* Korzysta z:
+*   - USART_kbhit: Sprawdzenie dostępności danych
+*   - USART_getchar: Pobranie znaku z UART
+*   - processReceivedChar: Przetworzenie odebranego znaku
+************************************************************************/
+void waitForFrame(void)
+{
+	if (USART_kbhit()) {
+	        uint8_t received_char = USART_getchar();
+	        processReceivedChar(received_char);
+	 }
 }
 /* USER CODE END 0 */
 
@@ -109,91 +137,31 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+
   SysTick_Config( 80000000 / 1000 ); //ustawienie systicka na 1 ms
+
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
-  HAL_UART_Receive_IT(&huart2,&USART_RxBuf[0],1);
+
+  lcdInit(); // inicjalizacja wyświetlacza
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  //TODO umieścić resetowanie wyświetlacza po wyktyciu np. dwóch ramek albo kolejnej ramki.
   while (1)
   {
     /* USER CODE END WHILE */
-	  if (USART_kbhit()) {                // Sprawdzamy, czy jest dostępny nowy znak
-	          received_char = USART_getchar();   // Pobieramy znak z bufora odbiorczego
 
-	          if (received_char == '~') {    // Rozpoczęcie nowej ramki
-	              if (!in_frame) {
-	                  USART_fsend("Znaleziono poczatek ramki...\r\n");
-	                  in_frame = true;
-	                  bx_index = 0;           // Resetujemy indeks bufora
-	                  escape_detected = false; // Resetujemy flagę escape
-	              } else {
-	                  reset_frame_state();
-	              }
-	          } else if (received_char == '`') {    // Koniec ramki
-	              if (in_frame) {
-	                  USART_fsend("Koniec odbioru, nastepuje sprawdzanie ramki...\r\n");
-	                  // Przetwarzanie odebranej ramki (np. wywołanie funkcji lub ustawienie flagi)
-	                  if (decodeFrame(bx,&ramka, bx_index)) {
-	                      USART_fsend("SUKCES!\r\n");
-	                      USART_fsend("%d\r\n", bx_index);
-	                      handleCommand(&ramka);
-	                  } else {
-	                      USART_fsend("BŁĄD: Dekodowanie ramki nie powiodło się\r\n");
-	                  }
+	  waitForFrame(); //czekanie na odbiór ramki
 
-	                  // Resetujemy stany po przetworzeniu ramki
-	                  reset_frame_state();
-	              } else {
-	                  // Jeśli ramka się kończy, ale nie została rozpoczęta
-	                  USART_fsend("BŁĄD: Zakonczenie ramki bez rozpoczecia\r\n");
-	                  reset_frame_state();
-	              }
-	          } else if (in_frame) {
-	              // Jesteśmy w ramce i przetwarzamy znaki
-	              if (escape_detected) {
-	                  // Jeśli wykryto escape char, sprawdzamy następny znak
-	                  if (received_char == '^') {
-	                      bx[bx_index++] = '~'; // '~' było zakodowane jako '}^'
-	                  } else if (received_char == ']') {
-	                      bx[bx_index++] = '}'; // '}' było zakodowane jako '}]'
-	                  } else if (received_char == '&') {
-	                      bx[bx_index++] = '`'; // '`' było zakodowane jako '}&'
-	                  } else {
-	                      // Nieprawidłowy znak po '}', resetujemy
-	                      USART_fsend("BŁĄD: Nieprawidłowy escape sequence\r\n");
-	                      reset_frame_state();
-	                  }
-	                  escape_detected = false; // Resetujemy flagę escape
-	              } else if (received_char == '}') {
-	                  escape_detected = true; // Wykryto znak escape, czekamy na następny
-	              } else {
-	                  // Normalny znak w ramce, zapisujemy do bx
-	                  if (bx_index < sizeof(bx)) {
-	                      bx[bx_index++] = received_char;
-	                  } else {
-	                      // kontrola przepełnienia
-	                      reset_frame_state();
-	                  }
-	              }
-	          } else {
-	              // Ignorujemy znaki poza ramką, ale resetujemy dla bezpieczeństwa
-	              //USART_fsend("BŁĄD: Znak poza ramką\r\n");
-	              //TODO bujnowski moze sie przyjebac ze jest reset co pętle
-	              reset_frame_state();
-	          }
-	      }
-	 	       //HAL_Delay(250);
-	 	       //HAL_GPIO_TogglePin(GPIOA,GPIO_PIN_5);
-    /* USER CODE BEGIN 3 */
+	/* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
 }

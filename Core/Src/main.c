@@ -18,10 +18,11 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
 #include "spi.h"
 #include "usart.h"
 #include "gpio.h"
-#include "stm32l4xx_it.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "spi.h"
@@ -144,6 +145,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART2_UART_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
@@ -158,10 +160,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
-	  waitForFrame(); //czekanie na odbiór ramki
-
-	/* USER CODE BEGIN 3 */
+	  waitForFrame();
+    /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
 }

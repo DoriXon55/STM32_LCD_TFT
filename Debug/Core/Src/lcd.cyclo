@@ -4,6 +4,8 @@
 ../Core/Src/lcd.c:116:13:lcdData16	1
 ../Core/Src/lcd.c:133:13:lcdSetWindow	1
 ../Core/Src/lcd.c:155:6:lcdCopy	1
-../Core/Src/lcd.c:175:6:lcdClear	2
-../Core/Src/lcd.c:200:6:lcdInit	2
-../Core/Src/lcd.c:227:6:lcdPutPixel	1
+../Core/Src/lcd.c:173:6:lcdClear	2
+../Core/Src/lcd.c:198:6:lcdInit	2
+../Core/Src/lcd.c:225:6:lcdPutPixel	1
+../Core/Src/lcd.c:232:6:lcdTransferDone	1
+../Core/Src/lcd.c:236:6:lcdIsBusy	2

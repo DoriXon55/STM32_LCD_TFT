@@ -59,6 +59,8 @@ void delay(uint32_t delayMs);
 /* Private defines -----------------------------------------------------------*/
 #define DIN_Pin GPIO_PIN_3
 #define DIN_GPIO_Port GPIOC
+#define BL_Pin GPIO_PIN_1
+#define BL_GPIO_Port GPIOB
 #define RST_Pin GPIO_PIN_2
 #define RST_GPIO_Port GPIOB
 #define CLK_Pin GPIO_PIN_10
