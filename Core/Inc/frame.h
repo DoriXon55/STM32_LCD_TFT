@@ -45,18 +45,6 @@
 #define COMMAND_ONN "ONN" //wyświetlanie napisu
 #define COMMAND_OFF "OFF" //wyłączenie wyświetlacza
 
-//===================STRUKTURA DO TWORZENIA ORAZ WYSYŁANIA RAMKI====================
-
-typedef struct{
-	uint8_t frame_start;
-	uint8_t sender;
-	uint8_t receiver;
-	uint8_t command[COMMAND_LENGTH];
-	uint8_t data[MAX_DATA_SIZE];
-	uint16_t crc;
-	uint8_t frame_end;
-}Frame;
-
 
 //=====================STRUKTURA DLA ODBIORU I DEKODOWANIA RAMKI=================
 // TODO zmienic na Frame a poprzednie usunąć
@@ -65,7 +53,7 @@ typedef struct{
 	char sender;
 	char command[COMMAND_LENGTH];
 	char data[MAX_DATA_SIZE];
-} Receive_Frame;
+} Frame;
 
 //====================STRUKTURA DLA ROZPOZNAWANIA KOMENDY======================
 
@@ -85,7 +73,7 @@ typedef struct{
 ************************************************************************/
 typedef struct {
     char command[COMMAND_LENGTH];
-    void (*function)(Receive_Frame *frame);
+    void (*function)(Frame *frame);
 } CommandEntry;
 
 
@@ -94,7 +82,7 @@ typedef struct {
 void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const char *format, ...);
 size_t byteStuffing(uint8_t *input, size_t input_len, uint8_t *output);
 size_t byteUnstuffing(uint8_t *input, size_t input_len, uint8_t *output);
-bool decodeFrame(uint8_t *bx, Receive_Frame *frame, uint8_t len);
-void handleCommand(Receive_Frame *frame);
+bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len);
+void handleCommand(Frame *frame);
 void processReceivedChar(uint8_t received_char);
 

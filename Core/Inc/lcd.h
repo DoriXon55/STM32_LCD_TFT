@@ -7,29 +7,29 @@
 
 
 //===================KOMENDY DO WYŚWIETLACZA, JEDNOBAJTOWE=================
-#define ST7735S_SLPOUT			0x11 	//sleep out
-#define ST7735S_DISPOFF			0x28 	//display off
-#define ST7735S_DISPON			0x29 	// display on
-#define ST7735S_CASET			0x2a	// ustawia początkową i końcową kolumnę rysowanego obszaru
-#define ST7735S_RASET			0x2b	// ustawia początkowy i końcowy wiersz rysowanego obrazu
-#define ST7735S_RAMWR			0x2c	// rozpoczyna przesyłanie danych do zdefiniowanego obszaru
-#define ST7735S_MADCTL			0x36	// read display MADCTL
-#define ST7735S_COLMOD			0x3a	// read display pixel format
+#define ST7735S_SLPOUT          0x11    // SLEEP OUT
+#define ST7735S_DISPOFF         0x28    // DISPLAY OFF
+#define ST7735S_DISPON          0x29    // DISPLAY ON
+#define ST7735S_CASET           0x2A    // USTAWIA POCZĄTKOWĄ I KOŃCOWĄ KOLUMNĘ RYSOWANEGO OBSZARU
+#define ST7735S_RASET           0x2B    // USTAWIA POCZĄTKOWY I KOŃCOWY WIERSZ RYSOWANEGO OBRAZU
+#define ST7735S_RAMWR           0x2C    // ROZPOCZYNA PRZESYŁANIE DANYCH DO ZDEFINIOWANEGO OBSZARU
+#define ST7735S_MADCTL          0x36    // READ DISPLAY MADCTL
+#define ST7735S_COLMOD          0x3A    // READ DISPLAY PIXEL FORMAT
 //===================FRAME RATE CONTROL=================
-#define ST7735S_FRMCTR1			0xb1	// normal mode
-#define ST7735S_FRMCTR2			0xb2	// in idle mode
-#define ST7735S_FRMCTR3			0xb3	//in partial mode
+#define ST7735S_FRMCTR1         0xB1    // NORMAL MODE
+#define ST7735S_FRMCTR2         0xB2    // IN IDLE MODE
+#define ST7735S_FRMCTR3         0xB3    // IN PARTIAL MODE
 //===================POWER CONTROL=================
-#define ST7735S_PWCTR1			0xc0	// power control 1
-#define ST7735S_PWCTR2			0xc1	// power control 2
-#define ST7735S_PWCTR3			0xc2	// power control 3 (normal mode)
-#define ST7735S_PWCTR4			0xc3	// power control 4 (idle mode)
-#define ST7735S_PWCTR5			0xc4	// power control 5 (partial mode)
+#define ST7735S_PWCTR1          0xC0    // POWER CONTROL 1
+#define ST7735S_PWCTR2          0xC1    // POWER CONTROL 2
+#define ST7735S_PWCTR3          0xC2    // POWER CONTROL 3 (NORMAL MODE)
+#define ST7735S_PWCTR4          0xC3    // POWER CONTROL 4 (IDLE MODE)
+#define ST7735S_PWCTR5          0xC4    // POWER CONTROL 5 (PARTIAL MODE)
 //======================================================
-#define ST7735S_INVCTR			0xb4	// display invertion control
-#define ST7735S_VMCTR1			0xc5	//VCOM Control 1
-#define ST7735S_GAMCTRP1		0xe0	//gamma adjustment (+ Polarity)
-#define ST7735S_GAMCTRN1		0xe1	//gamma adjustment (- Polarity)
+#define ST7735S_INVCTR          0xB4    // DISPLAY INVERSION CONTROL
+#define ST7735S_VMCTR1          0xC5    // VCOM CONTROL 1
+#define ST7735S_GAMCTRP1        0xE0    // GAMMA ADJUSTMENT (+ POLARITY)
+#define ST7735S_GAMCTRN1        0xE1    // GAMMA ADJUSTMENT (- POLARITY)
 
 #define LCD_WIDTH	160
 #define LCD_HEIGHT	128

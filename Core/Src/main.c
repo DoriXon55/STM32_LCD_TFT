@@ -154,8 +154,9 @@ int main(void)
   //TODO umieścić resetowanie wyświetlacza po wyktyciu np. dwóch ramek albo kolejnej ramki.
   while (1)
   {
-    /* USER CODE END WHILE */
 	  waitForFrame();
+    /* USER CODE END WHILE */
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

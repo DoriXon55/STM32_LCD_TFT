@@ -39,8 +39,8 @@ ENTRY(Reset_Handler)
 /* Highest address of the user mode stack */
 _estack = ORIGIN(RAM) + LENGTH(RAM); /* end of "RAM" Ram type memory */
 
-_Min_Heap_Size = 0x200; /* required amount of heap */
-_Min_Stack_Size = 0x400; /* required amount of stack */
+_Min_Heap_Size = 0x300; /* required amount of heap */
+_Min_Stack_Size = 0x1000; /* required amount of stack */
 
 /* Memories definition */
 MEMORY
@@ -53,6 +53,7 @@ MEMORY
 /* Sections */
 SECTIONS
 {
+
   /* The startup code into "FLASH" Rom type memory */
   .isr_vector :
   {
@@ -177,6 +178,7 @@ SECTIONS
     . = ALIGN(8);
   } >RAM
 
+
   /* Remove information from the compiler libraries */
   /DISCARD/ :
   {
@@ -187,3 +189,6 @@ SECTIONS
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
 }
+
+
+

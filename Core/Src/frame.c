@@ -25,7 +25,7 @@ bool escape_detected = false;
 int bx_index = 0;
 bool in_frame = false;
 uint8_t received_char;
-Receive_Frame receiveFrame;
+Frame frame;
 
 
 static bool safeCompare(const char* str1, const char* str2, size_t len)
@@ -227,7 +227,7 @@ bool parseParameters(const char* data, const char* format, ...) {
 *   - value: Wartość do wypełnienia (0 dla wyzerowania)
 *   - num: Liczba bajtów do wypełnienia
 ************************************************************************/
-void clearFrame(Receive_Frame* frame) {
+void clearFrame(Frame* frame) {
     if (frame) {
         memset(frame->data, 0, sizeof(frame->data));
         memset(frame->command, 0, sizeof(frame->command));
@@ -260,7 +260,7 @@ void clearFrame(Receive_Frame* frame) {
 *
 *   3. prepareFrame(): Wysyła odpowiedź w przypadku błędu
 ************************************************************************/
-static void executeONK(Receive_Frame *frame)
+static void executeONK(Frame *frame)
 {
 	uint8_t x = 0, y = 0, r = 0, filling = 0;
 	Color_t color = 0;
@@ -304,7 +304,7 @@ static void executeONK(Receive_Frame *frame)
 *      Funkcje HAGL do rysowania prostokątów
 *      - Parametry: (x, y, width, height, color)
 ************************************************************************/
-static void executeONP(Receive_Frame *frame)
+static void executeONP(Frame *frame)
 {
 	uint8_t x = 0, y = 0, width = 0, height = 0, filling = 0;
 	Color_t color = 0;
@@ -348,7 +348,7 @@ static void executeONP(Receive_Frame *frame)
 *      Funkcje HAGL do rysowania trójkątów
 *      - Parametry: (x1,y1, x2,y2, x3,y3, color)
 ************************************************************************/
-static void executeONT(Receive_Frame *frame)
+static void executeONT(Frame *frame)
 {
     uint8_t x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0, filling = 0;
     Color_t color = 0;
@@ -398,7 +398,7 @@ static void executeONT(Receive_Frame *frame)
 *      - Dostępne fonty: font5x7, font5x8, font6x9
 
 ************************************************************************/
-static void executeONN(Receive_Frame *frame)
+static void executeONN(Frame *frame)
 {
     char text[50] = {0};
     wchar_t wtext[50] = {0};
@@ -446,7 +446,7 @@ static void executeONN(Receive_Frame *frame)
 *
 *   TODO: Naprawienie problemu z wyłączaniem podświetlenia
 ************************************************************************/
-static void executeOFF(Receive_Frame *frame)
+static void executeOFF(Frame *frame)
 {
 
 	switch(frame->data[0])
@@ -616,7 +616,7 @@ size_t byteStuffing(uint8_t *input, size_t input_len, uint8_t *output) {
 *   TODO zmienic na ReceiveFrame
 ************************************************************************/
 void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const char *format, ...) {
-    Frame frame = {0};
+	Frame frame = {0};
     frame.sender = sender;
     frame.receiver = receiver;
     strncpy((char *)frame.command, command, COMMAND_LENGTH);
@@ -711,7 +711,7 @@ void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const c
 *   - memcpy: Kopiowanie danych
 *   - calculateCrc16: Obliczanie sumy kontrolnej
 ************************************************************************/
-bool decodeFrame(uint8_t *bx, Receive_Frame *frame, uint8_t len) {
+bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len) {
     char ownCrc[2];
     char incCrc[2];
         if(len >= MIN_DECODED_FRAME_LEN && len <= MAX_FRAME_LEN) {
@@ -774,9 +774,9 @@ void processReceivedChar(uint8_t received_char) {
         }
     } else if (received_char == FRAME_END) {
         if (in_frame) {
-            if (decodeFrame(bx, &receiveFrame, bx_index)) {
+            if (decodeFrame(bx, &frame, bx_index)) {
                 prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "GOOD");
-                handleCommand(&receiveFrame);
+                handleCommand(&frame);
             } else {
                 prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL");
             }
@@ -846,7 +846,7 @@ void processReceivedChar(uint8_t received_char) {
 *   - Nieprawidłowe współrzędne
 *   - Przekroczenie obszaru wyświetlacza
 ************************************************************************/
-void handleCommand(Receive_Frame *frame) {
+void handleCommand(Frame *frame) {
     if (frame == NULL) {
         return;
     }
