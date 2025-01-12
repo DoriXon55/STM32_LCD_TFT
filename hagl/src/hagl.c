@@ -336,56 +336,38 @@ uint8_t hagl_get_glyph(wchar_t code, color_t color, bitmap_t *bitmap, const uint
 
 uint8_t hagl_put_char(wchar_t code, int16_t x0, int16_t y0, color_t color, const uint8_t *font)
 {
-    uint8_t status;
-    bitmap_t bitmap = {0};  // Inicjalizacja inline
+    uint8_t set, status;
+    color_t buffer[HAGL_CHAR_BUFFER_SIZE];
+    bitmap_t bitmap;
     fontx_glyph_t glyph;
 
-    // Sprawdzenie statusu glifu
     status = fontx_glyph(&glyph, code, font);
+
     if (0 != status) {
         return 0;
     }
 
-    // Dynamiczna alokacja bufora
-    color_t *buffer = (color_t *)malloc(glyph.width * glyph.height * sizeof(color_t));
-    if (!buffer) {
-        return 0;  // Obsługa błędu alokacji
-    }
+    bitmap.width = glyph.width,
+    bitmap.height = glyph.height,
+    bitmap.depth = DISPLAY_DEPTH,
 
-    // Inicjalizacja bitmapy
-    bitmap.width = glyph.width;
-    bitmap.height = glyph.height;
-    bitmap.depth = DISPLAY_DEPTH;
-    bitmap.buffer = (uint8_t *)buffer;
+    bitmap_init(&bitmap, (uint8_t *)buffer);
 
-    // Wypełnianie bufora
-    uint8_t current_byte;
-    uint8_t bit_mask;
-    color_t *ptr = buffer;
-    const uint8_t *glyph_ptr = glyph.buffer;
+    color_t *ptr = (color_t *) bitmap.buffer;
 
     for (uint8_t y = 0; y < glyph.height; y++) {
-        current_byte = *glyph_ptr;
-        bit_mask = 0x80;
-
         for (uint8_t x = 0; x < glyph.width; x++) {
-            *ptr++ = (current_byte & bit_mask) ? color : 0x0000;
-            bit_mask >>= 1;
-            if (bit_mask == 0) {
-                bit_mask = 0x80;
-                current_byte = *(++glyph_ptr);
+            set = *(glyph.buffer) & (0x80 >> (x % 8));
+            if (set) {
+                *(ptr++) = color;
+            } else {
+                *(ptr++) = 0x0000;
             }
         }
-        if (bit_mask != 0x80) {
-            glyph_ptr++;
-        }
+        glyph.buffer += glyph.pitch;
     }
 
-    // Wyświetlenie znaku
     hagl_blit(x0, y0, &bitmap);
-
-    // Zwolnienie bufora
-    free(buffer);
 
     return bitmap.width;
 }
@@ -425,6 +407,7 @@ uint16_t hagl_put_text(const wchar_t *str, int16_t x0, int16_t y0, color_t color
  * parameter is left out intentionally to keep the API simpler. If you need
  * configurable source and destination see the file blit.c.
  *
+ * TODO: Handle transparency.
  */
 
 void hagl_blit(int16_t x0, int16_t y0, bitmap_t *source) {
@@ -561,6 +544,142 @@ void hagl_fill_circle(int16_t x0, int16_t y0, int16_t r, color_t color) {
     }
 }
 
+void hagl_draw_ellipse(int16_t x0, int16_t y0, int16_t a, int16_t b, color_t color) {
+    int16_t wx, wy;
+    int32_t xa, ya;
+    int32_t t;
+    int32_t asq = a * a;
+    int32_t bsq = b * b;
+
+    hagl_put_pixel(x0, y0 + b, color);
+    hagl_put_pixel(x0, y0 - b, color);
+
+    wx = 0;
+    wy = b;
+    xa = 0;
+    ya = asq * 2 * b;
+    t = asq / 4 - asq * b;
+
+    while (1) {
+        t += xa + bsq;
+
+        if (t >= 0) {
+            ya -= asq * 2;
+            t -= ya;
+            wy--;
+        }
+
+        xa += bsq * 2;
+        wx++;
+
+        if (xa >= ya) {
+            break;
+        }
+
+        hagl_put_pixel(x0 + wx, y0 - wy, color);
+        hagl_put_pixel(x0 - wx, y0 - wy, color);
+        hagl_put_pixel(x0 + wx, y0 + wy, color);
+        hagl_put_pixel(x0 - wx, y0 + wy, color);
+    }
+
+    hagl_put_pixel(x0 + a, y0, color);
+    hagl_put_pixel(x0 - a, y0, color);
+
+    wx = a;
+    wy = 0;
+    xa = bsq * 2 * a;
+
+    ya = 0;
+    t = bsq / 4 - bsq * a;
+
+    while (1) {
+        t += ya + asq;
+
+        if (t >= 0) {
+            xa -= bsq * 2;
+            t = t - xa;
+            wx--;
+        }
+
+        ya += asq * 2;
+        wy++;
+
+        if (ya > xa) {
+            break;
+        }
+
+        hagl_put_pixel(x0 + wx, y0 - wy, color);
+        hagl_put_pixel(x0 - wx, y0 - wy, color);
+        hagl_put_pixel(x0 + wx, y0 + wy, color);
+        hagl_put_pixel(x0 - wx, y0 + wy, color);
+    }
+}
+
+void hagl_fill_ellipse(int16_t x0, int16_t y0, int16_t a, int16_t b, color_t color) {
+    int16_t wx, wy;
+    int32_t xa, ya;
+    int32_t t;
+    int32_t asq = a * a;
+    int32_t bsq = b * b;
+
+    hagl_put_pixel(x0, y0 + b, color);
+    hagl_put_pixel(x0, y0 - b, color);
+
+    wx = 0;
+    wy = b;
+    xa = 0;
+    ya = asq * 2 * b;
+    t = asq / 4 - asq * b;
+
+    while (1) {
+        t += xa + bsq;
+
+        if (t >= 0) {
+            ya -= asq * 2;
+            t -= ya;
+            wy--;
+        }
+
+        xa += bsq * 2;
+        wx++;
+
+        if (xa >= ya) {
+            break;
+        }
+
+        hagl_draw_hline(x0 - wx, y0 - wy, wx * 2, color);
+        hagl_draw_hline(x0 - wx, y0 + wy, wx * 2, color);
+    }
+
+    hagl_draw_hline(x0 - a, y0, a * 2, color);
+
+    wx = a;
+    wy = 0;
+    xa = bsq * 2 * a;
+
+    ya = 0;
+    t = bsq / 4 - bsq * a;
+
+    while (1) {
+        t += ya + asq;
+
+        if (t >= 0) {
+            xa -= bsq * 2;
+            t = t - xa;
+            wx--;
+        }
+
+        ya += asq * 2;
+        wy++;
+
+        if (ya > xa) {
+            break;
+        }
+
+        hagl_draw_hline(x0 - wx, y0 - wy, wx * 2, color);
+        hagl_draw_hline(x0 - wx, y0 + wy, wx * 2, color);
+    }
+}
 
 
 void hagl_draw_polygon(int16_t amount, int16_t *vertices, color_t color) {
@@ -735,7 +854,7 @@ void hagl_draw_rounded_rectangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
 void hagl_fill_rounded_rectangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t r, color_t color) {
 
     uint16_t width, height;
-    int16_t rx0, ry0, rx1, x, y, d;
+    int16_t rx0, ry0, rx1, ry1, x, y, d;
 
     /* Make sure x0 is smaller than x1. */
     if (x0 > x1) {
@@ -813,7 +932,68 @@ void hagl_fill_rounded_rectangle(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
 
 
 
+static uint16_t tjpgd_data_reader(JDEC *decoder, uint8_t *buffer, uint16_t size)
+{
+    tjpgd_iodev_t *device = (tjpgd_iodev_t *)decoder->device;
 
+    if (buffer) {
+        /* Read bytes from input stream. */
+        return (uint16_t)fread(buffer, 1, size, device->fp);
+    } else {
+        /* Skip bytes from input stream. */
+        return fseek(device->fp, size, SEEK_CUR) ? 0 : size;
+    }
+}
+
+static uint16_t tjpgd_data_writer(JDEC* decoder, void* bitmap, JRECT* rectangle)
+{
+    tjpgd_iodev_t *device = (tjpgd_iodev_t *)decoder->device;
+    uint8_t width = (rectangle->right - rectangle->left) + 1;
+    uint8_t height = (rectangle->bottom - rectangle->top) + 1;
+
+    bitmap_t block = {
+        .width = width,
+        .height = height,
+        .depth = DISPLAY_DEPTH,
+        .pitch = width * (DISPLAY_DEPTH / 8),
+        .size =  width * (DISPLAY_DEPTH / 8) * height,
+        .buffer = (uint8_t *)bitmap
+    };
+
+    hagl_blit(rectangle->left + device->x0, rectangle->top + device->y0, &block);
+
+    return 1;
+}
+
+uint32_t hagl_load_image(int16_t x0, int16_t y0, const char *filename)
+{
+    uint8_t work[3100];
+    JDEC decoder;
+    JRESULT result;
+    tjpgd_iodev_t device;
+
+    device.x0 = x0;
+    device.y0 = y0;
+    device.fp = fopen(filename, "rb");
+
+    if (!device.fp) {
+        return HAGL_ERR_FILE_IO;
+    }
+    result = jd_prepare(&decoder, tjpgd_data_reader, work, 3100, (void *)&device);
+    if (result == JDR_OK) {
+        result = jd_decomp(&decoder, tjpgd_data_writer, 0);
+        if (JDR_OK != result) {
+            fclose(device.fp);
+            return HAGL_ERR_TJPGD + result;
+        }
+    } else {
+        fclose(device.fp);
+        return HAGL_ERR_TJPGD + result;
+    }
+
+    fclose(device.fp);
+    return HAGL_OK;
+}
 
 color_t hagl_color(uint8_t r, uint8_t g, uint8_t b)
 {
