@@ -41,4 +41,3 @@
 "./hagl/src/hsl.o"
 "./hagl/src/rgb565.o"
 "./hagl/src/rgb888.o"
-"./hagl/src/tjpgd.o"

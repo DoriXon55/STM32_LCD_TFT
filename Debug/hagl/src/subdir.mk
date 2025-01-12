@@ -11,8 +11,7 @@ C_SRCS += \
 ../hagl/src/hagl.c \
 ../hagl/src/hsl.c \
 ../hagl/src/rgb565.c \
-../hagl/src/rgb888.c \
-../hagl/src/tjpgd.c 
+../hagl/src/rgb888.c 
 
 OBJS += \
 ./hagl/src/bitmap.o \
@@ -21,8 +20,7 @@ OBJS += \
 ./hagl/src/hagl.o \
 ./hagl/src/hsl.o \
 ./hagl/src/rgb565.o \
-./hagl/src/rgb888.o \
-./hagl/src/tjpgd.o 
+./hagl/src/rgb888.o 
 
 C_DEPS += \
 ./hagl/src/bitmap.d \
@@ -31,8 +29,7 @@ C_DEPS += \
 ./hagl/src/hagl.d \
 ./hagl/src/hsl.d \
 ./hagl/src/rgb565.d \
-./hagl/src/rgb888.d \
-./hagl/src/tjpgd.d 
+./hagl/src/rgb888.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -42,7 +39,7 @@ hagl/src/%.o hagl/src/%.su hagl/src/%.cyclo: ../hagl/src/%.c hagl/src/subdir.mk
 clean: clean-hagl-2f-src
 
 clean-hagl-2f-src:
-	-$(RM) ./hagl/src/bitmap.cyclo ./hagl/src/bitmap.d ./hagl/src/bitmap.o ./hagl/src/bitmap.su ./hagl/src/clip.cyclo ./hagl/src/clip.d ./hagl/src/clip.o ./hagl/src/clip.su ./hagl/src/fontx.cyclo ./hagl/src/fontx.d ./hagl/src/fontx.o ./hagl/src/fontx.su ./hagl/src/hagl.cyclo ./hagl/src/hagl.d ./hagl/src/hagl.o ./hagl/src/hagl.su ./hagl/src/hsl.cyclo ./hagl/src/hsl.d ./hagl/src/hsl.o ./hagl/src/hsl.su ./hagl/src/rgb565.cyclo ./hagl/src/rgb565.d ./hagl/src/rgb565.o ./hagl/src/rgb565.su ./hagl/src/rgb888.cyclo ./hagl/src/rgb888.d ./hagl/src/rgb888.o ./hagl/src/rgb888.su ./hagl/src/tjpgd.cyclo ./hagl/src/tjpgd.d ./hagl/src/tjpgd.o ./hagl/src/tjpgd.su
+	-$(RM) ./hagl/src/bitmap.cyclo ./hagl/src/bitmap.d ./hagl/src/bitmap.o ./hagl/src/bitmap.su ./hagl/src/clip.cyclo ./hagl/src/clip.d ./hagl/src/clip.o ./hagl/src/clip.su ./hagl/src/fontx.cyclo ./hagl/src/fontx.d ./hagl/src/fontx.o ./hagl/src/fontx.su ./hagl/src/hagl.cyclo ./hagl/src/hagl.d ./hagl/src/hagl.o ./hagl/src/hagl.su ./hagl/src/hsl.cyclo ./hagl/src/hsl.d ./hagl/src/hsl.o ./hagl/src/hsl.su ./hagl/src/rgb565.cyclo ./hagl/src/rgb565.d ./hagl/src/rgb565.o ./hagl/src/rgb565.su ./hagl/src/rgb888.cyclo ./hagl/src/rgb888.d ./hagl/src/rgb888.o ./hagl/src/rgb888.su
 
 .PHONY: clean-hagl-2f-src
 

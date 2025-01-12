@@ -403,7 +403,7 @@ static void executeONN(Frame *frame)
     uint8_t x = 0, y = 0, fontSize = 0, speed = 0;
     Color_t color = BLACK;
 
-    if (!parseParameters(frame->data, "uuust", &x, &y, &fontSize, &color, text)) {
+    if (!parseParameters(frame->data, "uuuust", &x, &y, &fontSize, &speed, &color, text)) {
         prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
         return;
     }
