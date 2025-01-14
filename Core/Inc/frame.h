@@ -87,6 +87,7 @@ typedef struct {
     uint16_t color;
     uint8_t textLength;
     bool isScrolling;
+    bool firstIteration;
     uint32_t lastUpdate;
 } ScrollingTextState;
 //===================FUNCKJE DLA RAMEK======================================
@@ -96,6 +97,5 @@ size_t byteUnstuffing(uint8_t *input, size_t input_len, uint8_t *output);
 bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len);
 void handleCommand(Frame *frame);
 void processReceivedChar(uint8_t received_char);
-void stopAnimation(void);
 void updateScrollingText(void);
 

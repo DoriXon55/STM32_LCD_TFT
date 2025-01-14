@@ -48,7 +48,7 @@ uint8_t USART_kbhit(){
 int16_t USART_getchar() {
     if (rxRingBuffer.writeIndex != rxRingBuffer.readIndex) {
         int16_t tmp = USART_RxBuf[rxRingBuffer.readIndex];
-        rxRingBuffer.readIndex = (rxRingBuffer.readIndex + 1) % rxRingBuffer.mask;
+        rxRingBuffer.readIndex = (rxRingBuffer.readIndex + 1) & rxRingBuffer.mask;
         return tmp;
     }
     return -1;
@@ -84,28 +84,24 @@ void USART_sendFrame(const uint8_t* data, size_t length) {
 
     // Dodaj początek ramki
     USART_TxBuf[idx] = FRAME_START;
-    idx++;
-    if(idx >= TX_BUFFER_SIZE) idx = 0;
+    idx = (idx + 1) & txRingBuffer.mask;
 
     // Kopiuj dane do bufora nadawczego
     for(size_t i = 0; i < length; i++) {
         USART_TxBuf[idx] = data[i];
-        idx++;
-        if(idx >= TX_BUFFER_SIZE) idx = 0;
+        idx = (idx + 1) & txRingBuffer.mask;
     }
 
     // Dodaj koniec ramki
-    USART_TxBuf[idx++] = FRAME_END;
-    idx++;
-    if(idx >= TX_BUFFER_SIZE) idx = 0;
+    USART_TxBuf[idx] = FRAME_END;
+    idx = (idx + 1) & txRingBuffer.mask;
 
     // Rozpocznij transmisję jeśli bufor był pusty
     if((txRingBuffer.writeIndex == txRingBuffer.readIndex) &&
        (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_TXE) == SET)) {
         txRingBuffer.writeIndex = idx;
         uint8_t tmp = USART_TxBuf[txRingBuffer.readIndex];
-        txRingBuffer.readIndex++;
-        if(txRingBuffer.readIndex >= TX_BUFFER_SIZE) txRingBuffer.readIndex = 0;
+        txRingBuffer.readIndex = (txRingBuffer.readIndex + 1) & txRingBuffer.mask;
         HAL_UART_Transmit_IT(&huart2, &tmp, 1);
     } else {
         txRingBuffer.writeIndex = idx;

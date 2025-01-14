@@ -61,6 +61,7 @@ extern SPI_HandleTypeDef hspi2;
 extern UART_HandleTypeDef huart2;
 /* USER CODE BEGIN EV */
 extern volatile uint32_t tick;
+extern ScrollingTextState text;
 /* USER CODE END EV */
 
 /******************************************************************************/

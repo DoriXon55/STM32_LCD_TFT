@@ -45,8 +45,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
    if(huart==&huart2){
 	   if(txRingBuffer.writeIndex!=txRingBuffer.readIndex){
 		   uint8_t tmp = USART_TxBuf[txRingBuffer.readIndex];
-		   txRingBuffer.readIndex++;
-		   if(txRingBuffer.readIndex >= TX_BUFFER_SIZE) txRingBuffer.readIndex=0;
+		   txRingBuffer.readIndex = (txRingBuffer.readIndex + 1) & txRingBuffer.mask;
 		   HAL_UART_Transmit_IT(&huart2, &tmp, 1);
 	   }
    }
@@ -66,8 +65,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
 ************************************************************************/
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 	 if(huart==&huart2){
-		 rxRingBuffer.writeIndex++;
-		 if(rxRingBuffer.writeIndex >= RX_BUFFER_SIZE) rxRingBuffer.writeIndex=0;
+		 rxRingBuffer.writeIndex = (rxRingBuffer.writeIndex + 1) & rxRingBuffer.mask;
 		 HAL_UART_Receive_IT(&huart2,&USART_RxBuf[rxRingBuffer.writeIndex],1);
 
 	 }

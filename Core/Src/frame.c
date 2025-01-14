@@ -26,9 +26,19 @@ int bx_index = 0;
 bool in_frame = false;
 uint8_t received_char;
 Frame frame;
-static ScrollingTextState text;
+ScrollingTextState text;
 
+static void stopAnimation(void)
+{
+	text.isScrolling = false;
+}
 
+static void copyToBuffer(void)
+{
+	if (!lcdIsBusy()) {
+		lcdCopy();
+	}
+}
 static bool safeCompare(const char* str1, const char* str2, size_t len)
 {
 	if(str1 == NULL || str2 == NULL)
@@ -191,20 +201,25 @@ bool parseParameters(const char* data, const char* format, ...) {
                 break;
             }
             case 't': {
-            	if(strlen((char*)token) > 50)
-            	{
+            	size_t tokenLength = strlen((char*)token);
+            	if (text.scrollSpeed == 0 && tokenLength > 25) {
             		va_end(args);
             		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", token);
             		return false;
             	}
-                char* ptr = va_arg(args, char*);
-                strncpy(ptr, (char*)token, 50);  // Zmieniono na (char*)
-                ptr[50] = '\0';
-                break;
+            	else if (text.scrollSpeed > 0 && tokenLength > 50) {
+            		va_end(args);
+            		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", token);
+            		return false;
+            	}
+            	char* ptr = va_arg(args, char*);
+            	strncpy(ptr, (char*)token, tokenLength);
+            	ptr[tokenLength] = '\0';
+            	break;
             }
             default:
-                va_end(args);
-                return false;
+            	va_end(args);
+            	return false;
         }
         fmt_ptr++;
     }
@@ -416,7 +431,7 @@ static void executeONN(Frame *frame)
     text.startX = text.x;
     text.startY = text.y;
     text.textLength = 0;
-
+    text.firstIteration = true;
     // Konwersja tekstu
     while (charText[text.textLength] && text.textLength < 50) {
         text.displayText[text.textLength] = (wchar_t)charText[text.textLength];
@@ -465,7 +480,7 @@ static void executeOFF(Frame *frame)
 		HAL_GPIO_WritePin(BL_GPIO_Port, BL_Pin, GPIO_PIN_RESET);
 		break;
 	case 1:
-		hagl_fill_rectangle(0,0, LCD_WIDTH, LCD_HEIGHT, BLACK);
+		lcdClear();
 		break;
 	}
 }
@@ -785,6 +800,7 @@ void processReceivedChar(uint8_t received_char) {
         if (in_frame) {
             if (decodeFrame(bx, &frame, bx_index)) {
                 prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "GOOD");
+            	stopAnimation();
                 handleCommand(&frame);
             } else {
                 prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL");
@@ -871,12 +887,9 @@ void handleCommand(Frame *frame) {
     for (int i = 0; i < COMMAND_COUNT; i++) {
             if (safeCompare(frame->command, commandTable[i].command, COMMAND_LENGTH)) {
                 if (safeCompare(commandTable[i].command, "OFF", COMMAND_LENGTH)) {
-                	stopAnimation();
                     lcdClear();
                     commandTable[i].function(frame);
-                    if (!lcdIsBusy()) {
-                        lcdCopy();
-                    }
+                    copyToBuffer();
                     clearFrame(frame);
                     return;
                 }
@@ -884,12 +897,9 @@ void handleCommand(Frame *frame) {
                 int x, y;
                 if (parseCoordinates(frame->data, &x, &y)) {
                     if (isWithinBounds(x, y)) {
-                    	stopAnimation();
                         lcdClear();
                         commandTable[i].function(frame);
-                        if (!lcdIsBusy()) {
-                            lcdCopy();
-                        }
+                        copyToBuffer();
                         clearFrame(frame);
                         return;
                     } else {
@@ -897,6 +907,8 @@ void handleCommand(Frame *frame) {
                     return;
                 }
             } else {
+            	lcdClear();
+            	copyToBuffer();
                 prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
                 return;
             }
@@ -905,16 +917,12 @@ void handleCommand(Frame *frame) {
     prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->command);
 }
 
-void stopAnimation(void)
-{
-	text.isScrolling = false;
-}
 
 
 void updateScrollingText(void) {
-    if (!text.isScrolling || text.scrollSpeed == 0) {
-        return;
-    }
+	if (!text.isScrolling || text.scrollSpeed == 0) {
+	        return;
+	}
 
     uint32_t currentTime = HAL_GetTick();
     if ((currentTime - text.lastUpdate) >= (256 - text.scrollSpeed)) {
@@ -923,37 +931,46 @@ void updateScrollingText(void) {
         // Oblicz szerokość znaku w zależności od fontu
         uint8_t charWidth;
         uint8_t charHeight;
+        const uint8_t* font;
         switch(text.fontSize) {
-            case 1: charWidth = 5; charHeight = 7; break;
-            case 2: charWidth = 5; charHeight = 8; break;
-            case 3: charWidth = 6; charHeight = 9; break;
-            default: charWidth = 5; charHeight = 7;
+            case 1: charWidth = 5; charHeight = 7; font=font5x7; break;
+            case 2: charWidth = 5; charHeight = 8; font=font5x8; break;
+            case 3: charWidth = 6; charHeight = 9; font=font6x9;break;
+            default: charWidth = 5; charHeight = 7; font=font5x7; break;
         }
 
-        // Przesuń tekst w prawo
         text.x += charWidth;
 
-        // Jeśli tekst doszedł do prawej krawędzi
-        if (text.x >= LCD_WIDTH - (charWidth * text.textLength)) {
-            text.x = text.startX;  // Wróć do lewej
-            text.y += charHeight;  // Przejdź do następnej linii
+                // Oblicz całkowitą szerokość tekstu
+                uint16_t textWidth = charWidth * text.textLength;
 
-            // Jeśli doszliśmy do dołu ekranu
-            if (text.y >= LCD_HEIGHT - charHeight) {
-                text.x = text.startX;  // Resetuj pozycję X
-                text.y = text.startY;  // Resetuj pozycję Y
-            }
-        }
+                // Jeśli tekst wyszedł całkowicie za ekran
+                if (text.x >= LCD_WIDTH - (charWidth * text.textLength)) {
+                    if (text.firstIteration) {
+                        // W pierwszej iteracji używamy startowych współrzędnych
+                        text.x = text.startX;  // Zaczynamy zza lewej krawędzi
+                        text.y += charHeight;
+
+                        // Jeśli doszliśmy do dołu ekranu w pierwszej iteracji
+                        if (text.y >= LCD_HEIGHT - charHeight) {
+                            text.firstIteration = false;  // Kończymy pierwszą iterację
+                            text.x = -textWidth;
+                            text.y = 0;
+                        }
+                    } else {
+                        // W kolejnych iteracjach zaczynamy od lewej krawędzi
+                        text.x = -textWidth;
+                        text.y += charHeight;
+
+                        // Jeśli doszliśmy do dołu ekranu
+                        if (text.y >= LCD_HEIGHT - charHeight) {
+                            text.y = 0;
+                        }
+                    }
+                }
 
         if (!lcdIsBusy()) {
             lcdClear();
-            const uint8_t* font;
-            switch(text.fontSize) {
-                case 1: font = font5x7; break;
-                case 2: font = font5x8; break;
-                case 3: font = font6x9; break;
-                default: font = font5x7;
-            }
             hagl_put_text(text.displayText, text.x, text.y, text.color, font);
             lcdCopy();
         }
