@@ -96,7 +96,6 @@ void USART_sendFrame(const uint8_t* data, size_t length) {
 
     // Dodaj koniec ramki
     USART_TxBuf[idx++] = FRAME_END;
-    USART_TxBuf[idx] = "\n\r";
     idx++;
     if(idx >= TX_BUFFER_SIZE) idx = 0;
 

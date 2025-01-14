@@ -7,5 +7,5 @@
 ../Core/Src/lcd.c:179:6:lcdClear	8	static
 ../Core/Src/lcd.c:196:6:lcdInit	16	static
 ../Core/Src/lcd.c:224:6:lcdPutPixel	24	static
-../Core/Src/lcd.c:230:6:lcdIsBusy	4	static
-../Core/Src/lcd.c:234:6:HAL_SPI_TxCpltCallback	16	static
+../Core/Src/lcd.c:228:6:lcdIsBusy	4	static
+../Core/Src/lcd.c:232:6:HAL_SPI_TxCpltCallback	16	static

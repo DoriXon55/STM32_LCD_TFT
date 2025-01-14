@@ -76,11 +76,19 @@ typedef struct {
     void (*function)(Frame *frame);
 } CommandEntry;
 
-
-
-
-
-
+typedef struct {
+    wchar_t displayText[50];
+    uint8_t x;              // Aktualna pozycja X
+    uint8_t y;              // Aktualna pozycja Y
+    uint8_t startX;         // Początkowa pozycja X
+    uint8_t startY;         // Początkowa pozycja Y
+    uint8_t fontSize;
+    uint8_t scrollSpeed;
+    uint16_t color;
+    uint8_t textLength;
+    bool isScrolling;
+    uint32_t lastUpdate;
+} ScrollingTextState;
 //===================FUNCKJE DLA RAMEK======================================
 void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const char *format, ...);
 size_t byteStuffing(uint8_t *input, size_t input_len, uint8_t *output);
@@ -88,4 +96,6 @@ size_t byteUnstuffing(uint8_t *input, size_t input_len, uint8_t *output);
 bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len);
 void handleCommand(Frame *frame);
 void processReceivedChar(uint8_t received_char);
+void stopAnimation(void);
+void updateScrollingText(void);
 
