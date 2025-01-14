@@ -151,21 +151,19 @@ bool parseParameters(const char* data, const char* format, ...) {
 
     const char* data_ptr = data;
     const char* fmt_ptr = format;
-    char token[51];
+    unsigned char token[51];  // Zmieniono na unsigned char
     size_t token_idx;
 
     while (*fmt_ptr) {
 
-        while (isspace(*data_ptr)) data_ptr++;
+        while (isspace((unsigned char)*data_ptr)) data_ptr++;
 
         token_idx = 0;
 
-
         while (*data_ptr && *data_ptr != ',' && token_idx < 49) {
-            token[token_idx++] = *data_ptr++;
+            token[token_idx++] = (unsigned char)*data_ptr++;  // Zmieniono na unsigned char
         }
         token[token_idx] = '\0';
-
 
         if (*data_ptr == ',') data_ptr++;
 
@@ -175,7 +173,7 @@ bool parseParameters(const char* data, const char* format, ...) {
         switch (*fmt_ptr) {
             case 'u': {
                 char* endptr;
-                unsigned long val = strtoul(token, &endptr, 10);
+                unsigned long val = strtoul((char*)token, &endptr, 10);  // Zmieniono na (char*)
                 if (*endptr || val > 255) {
                     va_end(args);
                     return false;
@@ -185,7 +183,7 @@ bool parseParameters(const char* data, const char* format, ...) {
             }
             case 's': {
                 Color_t* color_ptr = va_arg(args, Color_t*);
-                if (!parseColor(token, color_ptr)) {
+                if (!parseColor((char*)token, color_ptr)) {  // Zmieniono na (char*)
                     va_end(args);
                     return false;
                 }
@@ -193,7 +191,7 @@ bool parseParameters(const char* data, const char* format, ...) {
             }
             case 't': {
                 char* ptr = va_arg(args, char*);
-                strncpy(ptr, token, 50);
+                strncpy(ptr, (char*)token, 50);  // Zmieniono na (char*)
                 ptr[50] = '\0';
                 break;
             }
@@ -405,7 +403,7 @@ static void executeONN(Frame *frame)
     uint8_t x = 0, y = 0, fontSize = 0, speed = 0;
     Color_t color = BLACK;
 
-    if (!parseParameters(frame->data, "uuust", &x, &y, &fontSize, &color, text)) {
+    if (!parseParameters(frame->data, "uuuust", &x, &y, &fontSize, &speed, &color, text)) {
         prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
         return;
     }
@@ -427,6 +425,10 @@ static void executeONN(Frame *frame)
             hagl_put_text(wtext, x, y, color, font6x9);
             break;
     }
+
+
+
+
 }
 
 
@@ -444,7 +446,7 @@ static void executeONN(Frame *frame)
 *   case 1: Czyszczenie ekranu
 *     - Używa hagl_fill_rectangle(0,0, LCD_WIDTH, LCD_HEIGHT, BLACK)
 *
-*   TODO: Naprawienie problemu z wyłączaniem podświetlenia
+* TODO naprawic wylaczenie oraz reset
 ************************************************************************/
 static void executeOFF(Frame *frame)
 {
@@ -452,7 +454,7 @@ static void executeOFF(Frame *frame)
 	switch(frame->data[0])
 	{
 	case 0:
-		HAL_GPIO_WritePin(BL_GPIO_Port, BL_Pin, GPIO_PIN_RESET); //TODO sprawdzić dlaczego nie działa
+		HAL_GPIO_WritePin(BL_GPIO_Port, BL_Pin, GPIO_PIN_RESET);
 		break;
 	case 1:
 		hagl_fill_rectangle(0,0, LCD_WIDTH, LCD_HEIGHT, BLACK);
@@ -613,7 +615,6 @@ size_t byteStuffing(uint8_t *input, size_t input_len, uint8_t *output) {
 *   5. Przygotowuje payload
 *   6. Wykonuje byte stuffing
 *   7. Wysyła ramkę
-*   TODO zmienic na ReceiveFrame
 ************************************************************************/
 void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const char *format, ...) {
 	Frame frame = {0};
@@ -761,7 +762,6 @@ bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len) {
 *   - Nieprawidłowe sekwencje escape
 *   - Przepełnienie bufora
 *   - Nieoczekiwane znaki początku/końca
-*   TODO zmienic dekodowanie ramki
 ************************************************************************/
 void processReceivedChar(uint8_t received_char) {
     if (received_char == FRAME_START) {
@@ -769,8 +769,9 @@ void processReceivedChar(uint8_t received_char) {
             in_frame = true;
             bx_index = 0;
             escape_detected = false;
-        } else {
+        } else if(in_frame) {
             resetFrameState();
+            in_frame = true;
         }
     } else if (received_char == FRAME_END) {
         if (in_frame) {

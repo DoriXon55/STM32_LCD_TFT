@@ -62,15 +62,6 @@ static const ColorMap color_map[] = {
     {"BLACK", BLACK}
 };
 
-typedef struct {
-    uint16_t buffer1[LCD_WIDTH * LCD_HEIGHT];
-    uint16_t buffer2[LCD_WIDTH * LCD_HEIGHT];
-    uint16_t *front_buffer;
-    uint16_t *back_buffer;
-} LCD_Buffers;
-
-extern LCD_Buffers lcd_buffers;
-void lcdSwapBuffers(void);
 
 
 
@@ -83,7 +74,6 @@ void lcdSwapBuffers(void);
 void lcdCopy(void);
 void lcdClear(void);
 void lcdPutPixel(int x, int y, uint16_t color);
-void lcdTransferDone();
 bool lcdIsBusy();
 //==========================INICJALIZACJA WYŚWIETLACZA============================
 

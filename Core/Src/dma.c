@@ -23,6 +23,9 @@
 
 /* USER CODE BEGIN 0 */
 
+
+
+
 /* USER CODE END 0 */
 
 /*----------------------------------------------------------------------------*/
@@ -44,7 +47,7 @@ void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
 
 }

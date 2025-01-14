@@ -78,6 +78,9 @@ typedef struct {
 
 
 
+
+
+
 //===================FUNCKJE DLA RAMEK======================================
 void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const char *format, ...);
 size_t byteStuffing(uint8_t *input, size_t input_len, uint8_t *output);
