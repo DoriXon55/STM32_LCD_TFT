@@ -112,7 +112,6 @@ static void resetFrameState() {
 }
 
 
-
 /************************************************************************
 * Funkcja: parseParameters()
 * Cel: Parsuje parametry z ciągu znaków według zadanego formatu
@@ -202,14 +201,13 @@ bool parseParameters(const char* data, const char* format, ...) {
             }
             case 't': {
             	size_t tokenLength = strlen((char*)token);
-            	if (text.scrollSpeed == 0 && tokenLength > 25) {
-            		va_end(args);
-            		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", token);
-            		return false;
-            	}
+            	    if (text.scrollSpeed > 0 && tokenLength > 50) {
+            	        va_end(args);
+            	        return false;
+            	    }
             	else if (text.scrollSpeed > 0 && tokenLength > 50) {
             		va_end(args);
-            		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", token);
+            		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%c", tokenLength);
             		return false;
             	}
             	char* ptr = va_arg(args, char*);
@@ -226,7 +224,6 @@ bool parseParameters(const char* data, const char* format, ...) {
     va_end(args);
     return !*data_ptr;
 }
-
 
 
 
@@ -942,7 +939,6 @@ void updateScrollingText(void) {
         text.x += charWidth;
 
                 // Oblicz całkowitą szerokość tekstu
-                uint16_t textWidth = charWidth * text.textLength;
 
                 // Jeśli tekst wyszedł całkowicie za ekran
                 if (text.x >= LCD_WIDTH - (charWidth * text.textLength)) {
@@ -954,12 +950,12 @@ void updateScrollingText(void) {
                         // Jeśli doszliśmy do dołu ekranu w pierwszej iteracji
                         if (text.y >= LCD_HEIGHT - charHeight) {
                             text.firstIteration = false;  // Kończymy pierwszą iterację
-                            text.x = -textWidth;
+                            text.x = 0;
                             text.y = 0;
                         }
                     } else {
                         // W kolejnych iteracjach zaczynamy od lewej krawędzi
-                        text.x = -textWidth;
+                        text.x = 0;
                         text.y += charHeight;
 
                         // Jeśli doszliśmy do dołu ekranu
