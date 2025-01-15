@@ -26,7 +26,7 @@ int bx_index = 0;
 bool in_frame = false;
 uint8_t received_char;
 Frame frame;
-ScrollingTextState text;
+ScrollingTextState text = {0};
 
 static void stopAnimation(void)
 {
@@ -417,7 +417,7 @@ static void executeONT(Frame *frame)
 ************************************************************************/
 static void executeONN(Frame *frame)
 {
-    const char charText[50];
+    const char charText[50] = {0};
 
     if (!parseParameters(frame->data, "uuuust", &text.x, &text.y, &text.fontSize, &text.scrollSpeed, &text.color, charText)) {
         prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
@@ -425,6 +425,7 @@ static void executeONN(Frame *frame)
     }
 
     // Zapisz początkowe pozycje
+    memset(text.displayText, 0, sizeof(text.displayText));
     text.startX = text.x;
     text.startY = text.y;
     text.textLength = 0;
@@ -920,7 +921,6 @@ void updateScrollingText(void) {
 	if (!text.isScrolling || text.scrollSpeed == 0) {
 	        return;
 	}
-
     uint32_t currentTime = HAL_GetTick();
     if ((currentTime - text.lastUpdate) >= (256 - text.scrollSpeed)) {
         text.lastUpdate = currentTime;
