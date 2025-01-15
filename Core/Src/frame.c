@@ -785,15 +785,15 @@ bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len) {
 ************************************************************************/
 void processReceivedChar(uint8_t received_char) {
     if (received_char == FRAME_START) {
-        if (!in_frame) {
-            in_frame = true;
-            bx_index = 0;
-            escape_detected = false;
-        } else if(in_frame) {
-            resetFrameState();
-            in_frame = true;
-        }
-    } else if (received_char == FRAME_END) {
+    	if(in_frame) {
+    		resetFrameState();
+    		in_frame = true;
+    	}
+    	in_frame = true;
+    	bx_index = 0;
+    	escape_detected = false;
+
+    } else if (received_char == FRAME_END && escape_detected == false) {
         if (in_frame) {
             if (decodeFrame(bx, &frame, bx_index)) {
                 prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "GOOD");
