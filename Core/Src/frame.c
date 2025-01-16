@@ -207,11 +207,21 @@ bool parseParameters(const uint8_t* data, const char* format, ...) {
         USART_sendFrame(buf, idx);
     }
 
+    // Store scrollSpeed for text length validation
+    uint8_t scrollSpeed = 0;
+    bool hasScrollSpeed = false;
+
     while (*fmt_ptr) {
         switch (*fmt_ptr) {
             case 'u': {
                 uint8_t* value_ptr = va_arg(args, uint8_t*);
                 *value_ptr = *data_ptr++;  // Bezpośrednio odczytaj bajt
+
+                // Store scrollSpeed for later validation
+                if (!hasScrollSpeed) {
+                    scrollSpeed = *value_ptr;
+                    hasScrollSpeed = true;
+                }
 
                 // Jeśli następny znak to przecinek, pomiń go
                 if (*data_ptr == ',') {
@@ -244,6 +254,14 @@ bool parseParameters(const uint8_t* data, const char* format, ...) {
                     token[token_idx++] = *data_ptr++;
                 }
                 token[token_idx] = '\0';
+
+                // Sprawdź długość tekstu na podstawie scrollSpeed
+                size_t maxLength = (scrollSpeed == 0) ? 25 : 50;
+                if (token_idx > maxLength) {
+                    va_end(args);
+                    prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "TOO_MUCH_TEXT%s", token_idx);
+                    return false;  // Tekst jest za długi
+                }
 
                 char* text_ptr = va_arg(args, char*);
                 strncpy(text_ptr, (char*)token, token_idx);
@@ -516,6 +534,8 @@ static void executeOFF(Frame *frame)
 	case 1:
 		lcdClear();
 		break;
+	default:
+		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "WRONG_DATA%c", frame->data[0]);
 	}
 }
 
