@@ -27,7 +27,35 @@ bool in_frame = false;
 uint8_t received_char;
 Frame frame;
 ScrollingTextState text = {0};
+static void debugData(const char* message, uint8_t *data, size_t len) {
+    // Bufor na wiadomość debugową (zakładając maksymalną długość)
+    uint8_t debug_buffer[256];
+    uint8_t hex_str[4];  // Bufor na pojedynczą wartość hex
+    int idx = 0;
 
+    // Kopiuj wiadomość
+    while (*message) {
+        debug_buffer[idx++] = *message++;
+    }
+
+    debug_buffer[idx++] = ':';
+    debug_buffer[idx++] = ' ';
+
+    // Konwertuj każdy bajt na hex string
+    for(size_t i = 0; i < len; i++) {
+        // Konwersja na hex (np. 0xFF -> "FF ")
+        sprintf((char*)hex_str, "%02X ", data[i]);
+        debug_buffer[idx++] = hex_str[0];
+        debug_buffer[idx++] = hex_str[1];
+        debug_buffer[idx++] = ' ';
+    }
+
+    debug_buffer[idx++] = '\r';
+    debug_buffer[idx++] = '\n';
+
+    // Wyślij przez UART
+    USART_sendFrame(debug_buffer, idx);
+}
 static void stopAnimation(void)
 {
 	text.isScrolling = false;
@@ -152,79 +180,87 @@ static void resetFrameState() {
 *      - Przetwarza token według odpowiedniego typu
 *   4. Zwalnia va_list
 ************************************************************************/
-bool parseParameters(const char* data, const char* format, ...) {
+bool parseParameters(const uint8_t* data, const char* format, ...) {
     if (!data || !format) {
         return false;
     }
     va_list args;
     va_start(args, format);
 
-    const char* data_ptr = data;
+    const uint8_t* data_ptr = data;
     const char* fmt_ptr = format;
-    unsigned char token[51];  // Zmieniono na unsigned char
-    size_t token_idx;
+    uint8_t token[51];
+    size_t token_idx = 0;
+
+    // Debug helper
+    void debugData(const char* msg, const uint8_t* data, size_t len) {
+        uint8_t buf[100];
+        int idx = 0;
+        while (*msg) buf[idx++] = *msg++;
+        buf[idx++] = ':';
+        buf[idx++] = ' ';
+        for (size_t i = 0; i < len; i++) {
+            buf[idx++] = data[i];
+        }
+        buf[idx++] = '\r';
+        buf[idx++] = '\n';
+        USART_sendFrame(buf, idx);
+    }
 
     while (*fmt_ptr) {
-
-        while (isspace((unsigned char)*data_ptr)) data_ptr++;
-
-        token_idx = 0;
-
-        while (*data_ptr && *data_ptr != ',' && token_idx < 49) {
-            token[token_idx++] = (unsigned char)*data_ptr++;  // Zmieniono na unsigned char
-        }
-        token[token_idx] = '\0';
-
-        if (*data_ptr == ',') data_ptr++;
-
-        while (token_idx > 0 && isspace(token[token_idx - 1])) {
-            token[--token_idx] = '\0';
-        }
         switch (*fmt_ptr) {
             case 'u': {
-                char* endptr;
-                unsigned long val = strtoul((char*)token, &endptr, 10);  // Zmieniono na (char*)
-                if (*endptr || val > 255) {
-                    va_end(args);
-                    return false;
+                uint8_t* value_ptr = va_arg(args, uint8_t*);
+                *value_ptr = *data_ptr++;  // Bezpośrednio odczytaj bajt
+
+                // Jeśli następny znak to przecinek, pomiń go
+                if (*data_ptr == ',') {
+                    data_ptr++;
                 }
-                *va_arg(args, uint8_t*) = (uint8_t)val;
+                debugData("read u", value_ptr, 1);
                 break;
             }
             case 's': {
+                // Zbierz znaki do przecinka
+                token_idx = 0;
+                while (*data_ptr && *data_ptr != ',' && token_idx < 50) {
+                    token[token_idx++] = *data_ptr++;
+                }
+                token[token_idx] = '\0';
+                if (*data_ptr == ',') data_ptr++;
+
                 Color_t* color_ptr = va_arg(args, Color_t*);
-                if (!parseColor((char*)token, color_ptr)) {  // Zmieniono na (char*)
+                if (!parseColor((char*)token, color_ptr)) {
                     va_end(args);
                     return false;
                 }
+                debugData("read color", token, token_idx);
                 break;
             }
             case 't': {
-            	size_t tokenLength = strlen((char*)token);
-            	    if (text.scrollSpeed > 0 && tokenLength > 50) {
-            	        va_end(args);
-            	        return false;
-            	    }
-            	else if (text.scrollSpeed > 0 && tokenLength > 50) {
-            		va_end(args);
-            		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%c", tokenLength);
-            		return false;
-            	}
-            	char* ptr = va_arg(args, char*);
-            	strncpy(ptr, (char*)token, tokenLength);
-            	ptr[tokenLength] = '\0';
-            	break;
+                // Zbierz pozostały tekst
+                token_idx = 0;
+                while (*data_ptr && token_idx < 50) {
+                    token[token_idx++] = *data_ptr++;
+                }
+                token[token_idx] = '\0';
+
+                char* text_ptr = va_arg(args, char*);
+                strncpy(text_ptr, (char*)token, token_idx);
+                text_ptr[token_idx] = '\0';
+                debugData("read text", token, token_idx);
+                break;
             }
             default:
-            	va_end(args);
-            	return false;
+                va_end(args);
+                return false;
         }
         fmt_ptr++;
     }
-    va_end(args);
-    return !*data_ptr;
-}
 
+    va_end(args);
+    return true;
+}
 
 
 /************************************************************************
@@ -532,25 +568,11 @@ bool isWithinBounds(int x, int y)
 *
 *   3. atoi(): Konwertuje string na int
 ************************************************************************/
-bool parseCoordinates(const char *data, int *x, int *y)
+bool parseCoordinates(const uint8_t* data, int* x, int* y)
 {
-	char *token;
-	    char data_copy[MAX_DATA_SIZE];
-	    strncpy(data_copy, data, MAX_DATA_SIZE);
-
-	    token = strtok(data_copy, ",");
-	    if (token == NULL) {
-	        return false;
-	    }
-	    *x = atoi(token);
-
-	    token = strtok(NULL, ",");
-	    if (token == NULL) {
-	        return false;
-	    }
-	    *y = atoi(token);
-
-	    return true;
+	 *x = data[0];  // Pierwszy bajt to x
+	 *y = data[2];  // Drugi bajt to y
+    return true;
 }
 
 
@@ -736,23 +758,44 @@ void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const c
 bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len) {
     char ownCrc[2];
     char incCrc[2];
-        if(len >= MIN_DECODED_FRAME_LEN && len <= MAX_FRAME_LEN) {
-            uint8_t k = 0;
-            frame->receiver = bx[k++];
-            frame->sender = bx[k++];
-            memcpy(frame->command, &bx[k],COMMAND_LENGTH);
-            k += COMMAND_LENGTH;
-            uint8_t data_len = len - MIN_DECODED_FRAME_LEN;
-            memcpy(frame->data, &bx[k],data_len);
-            k += data_len;
-            memcpy(incCrc, &bx[k], 2);
-            calculateCrc16((uint8_t *)frame, k, ownCrc);
-            if(ownCrc[0] != incCrc[0] || ownCrc[1] != incCrc[1]) {
-            	return false;
-            }
-            return true;
+
+    if(len >= MIN_DECODED_FRAME_LEN && len <= MAX_FRAME_LEN) {
+        uint8_t k = 0;
+
+        // Debug otrzymanych danych
+        debugData("Received data", bx, len);
+
+
+        frame->sender = bx[k++];
+        if(frame->sender != 'g')
+        {
+        	return false;
         }
-        return false;
+        frame->receiver = bx[k++];
+
+        memcpy(frame->command, &bx[k], COMMAND_LENGTH);
+        k += COMMAND_LENGTH;
+
+        uint8_t data_len = len - MIN_DECODED_FRAME_LEN;
+        memcpy(frame->data, &bx[k], data_len);
+        frame->data[data_len] = '\0';
+        k += data_len;
+
+        memcpy(incCrc, &bx[k], 2);
+        debugCRCCalculation((uint8_t*)frame, k);
+        calculateCrc16((uint8_t *)frame, k, ownCrc);
+
+        // Debug CRC
+        debugData("Calculated CRC", ownCrc, 2);
+        debugData("Received CRC", incCrc, 2);
+
+        if(ownCrc[0] != incCrc[0] || ownCrc[1] != incCrc[1]) {
+            USART_sendFrame((uint8_t*)"CRC mismatch\r\n", 13);
+            return false;
+        }
+        return true;
+    }
+    return false;
 }
 
 /************************************************************************
@@ -972,5 +1015,6 @@ void updateScrollingText(void) {
         }
     }
 }
+
 
 

@@ -49,10 +49,10 @@
 //=====================STRUKTURA DLA ODBIORU I DEKODOWANIA RAMKI=================
 // TODO zmienic na Frame a poprzednie usunąć
 typedef struct{
-	char receiver;
-	char sender;
+	uint8_t sender;
+	uint8_t receiver;
 	char command[COMMAND_LENGTH];
-	char data[MAX_DATA_SIZE];
+	uint8_t data[MAX_DATA_SIZE];
 } Frame;
 
 //====================STRUKTURA DLA ROZPOZNAWANIA KOMENDY======================
