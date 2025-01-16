@@ -12,4 +12,3 @@
 
 void calculateCrc16(uint8_t *data, size_t length, char crc_out[2]);
 
-void debugCRCCalculation(uint8_t *data, size_t length);

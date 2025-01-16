@@ -1,2 +1,1 @@
 ../Core/Src/crc.c:92:6:calculateCrc16	40	static
-../Core/Src/crc.c:103:6:debugCRCCalculation	160	static

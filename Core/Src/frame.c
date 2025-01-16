@@ -27,46 +27,13 @@ bool in_frame = false;
 uint8_t received_char;
 Frame frame;
 ScrollingTextState text = {0};
-static void debugData(const char* message, uint8_t *data, size_t len) {
-    // Bufor na wiadomość debugową (zakładając maksymalną długość)
-    uint8_t debug_buffer[256];
-    uint8_t hex_str[4];  // Bufor na pojedynczą wartość hex
-    int idx = 0;
 
-    // Kopiuj wiadomość
-    while (*message) {
-        debug_buffer[idx++] = *message++;
-    }
-
-    debug_buffer[idx++] = ':';
-    debug_buffer[idx++] = ' ';
-
-    // Konwertuj każdy bajt na hex string
-    for(size_t i = 0; i < len; i++) {
-        // Konwersja na hex (np. 0xFF -> "FF ")
-        sprintf((char*)hex_str, "%02X ", data[i]);
-        debug_buffer[idx++] = hex_str[0];
-        debug_buffer[idx++] = hex_str[1];
-        debug_buffer[idx++] = ' ';
-    }
-
-    debug_buffer[idx++] = '\r';
-    debug_buffer[idx++] = '\n';
-
-    // Wyślij przez UART
-    USART_sendFrame(debug_buffer, idx);
-}
 static void stopAnimation(void)
 {
 	text.isScrolling = false;
 }
 
-static void copyToBuffer(void)
-{
-	if (!lcdIsBusy()) {
-		lcdCopy();
-	}
-}
+
 static bool safeCompare(const char* str1, const char* str2, size_t len)
 {
 	if(str1 == NULL || str2 == NULL)
@@ -192,21 +159,6 @@ bool parseParameters(const uint8_t* data, const char* format, ...) {
     uint8_t token[51];
     size_t token_idx = 0;
 
-    // Debug helper
-    void debugData(const char* msg, const uint8_t* data, size_t len) {
-        uint8_t buf[100];
-        int idx = 0;
-        while (*msg) buf[idx++] = *msg++;
-        buf[idx++] = ':';
-        buf[idx++] = ' ';
-        for (size_t i = 0; i < len; i++) {
-            buf[idx++] = data[i];
-        }
-        buf[idx++] = '\r';
-        buf[idx++] = '\n';
-        USART_sendFrame(buf, idx);
-    }
-
     // Store scrollSpeed for text length validation
     uint8_t scrollSpeed = 0;
     bool hasScrollSpeed = false;
@@ -227,7 +179,6 @@ bool parseParameters(const uint8_t* data, const char* format, ...) {
                 if (*data_ptr == ',') {
                     data_ptr++;
                 }
-                debugData("read u", value_ptr, 1);
                 break;
             }
             case 's': {
@@ -244,7 +195,6 @@ bool parseParameters(const uint8_t* data, const char* format, ...) {
                     va_end(args);
                     return false;
                 }
-                debugData("read color", token, token_idx);
                 break;
             }
             case 't': {
@@ -266,7 +216,6 @@ bool parseParameters(const uint8_t* data, const char* format, ...) {
                 char* text_ptr = va_arg(args, char*);
                 strncpy(text_ptr, (char*)token, token_idx);
                 text_ptr[token_idx] = '\0';
-                debugData("read text", token, token_idx);
                 break;
             }
             default:
@@ -783,7 +732,6 @@ bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len) {
         uint8_t k = 0;
 
         // Debug otrzymanych danych
-        debugData("Received data", bx, len);
 
 
         frame->sender = bx[k++];
@@ -802,15 +750,8 @@ bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len) {
         k += data_len;
 
         memcpy(incCrc, &bx[k], 2);
-        debugCRCCalculation((uint8_t*)frame, k);
         calculateCrc16((uint8_t *)frame, k, ownCrc);
-
-        // Debug CRC
-        debugData("Calculated CRC", ownCrc, 2);
-        debugData("Received CRC", incCrc, 2);
-
         if(ownCrc[0] != incCrc[0] || ownCrc[1] != incCrc[1]) {
-            USART_sendFrame((uint8_t*)"CRC mismatch\r\n", 13);
             return false;
         }
         return true;
@@ -949,7 +890,7 @@ void handleCommand(Frame *frame) {
                 if (safeCompare(commandTable[i].command, "OFF", COMMAND_LENGTH)) {
                     lcdClear();
                     commandTable[i].function(frame);
-                    copyToBuffer();
+                    lcdCopy();
                     clearFrame(frame);
                     return;
                 }
@@ -959,7 +900,7 @@ void handleCommand(Frame *frame) {
                     if (isWithinBounds(x, y)) {
                         lcdClear();
                         commandTable[i].function(frame);
-                        copyToBuffer();
+                        lcdCopy();
                         clearFrame(frame);
                         return;
                     } else {
@@ -968,7 +909,7 @@ void handleCommand(Frame *frame) {
                 }
             } else {
             	lcdClear();
-            	copyToBuffer();
+            	lcdCopy();
                 prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
                 return;
             }
@@ -1026,12 +967,9 @@ void updateScrollingText(void) {
                         }
                     }
                 }
-
-        if (!lcdIsBusy()) {
             lcdClear();
             hagl_put_text(text.displayText, text.x, text.y, text.color, font);
             lcdCopy();
-        }
     }
 }
 

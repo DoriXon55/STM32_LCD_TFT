@@ -100,34 +100,4 @@ void calculateCrc16(uint8_t *data, size_t length, char crc_out[2]) {
     crc_out[0] = ((crc >> 8) & 0xFF);
     crc_out[1] = (crc & 0xFF);
 }
-void debugCRCCalculation(uint8_t *data, size_t length) {
-    uint16_t crc = 0xFFFF;
-    USART_sendFrame((uint8_t*)"CRC Calculation:\r\n", 17);
 
-    char buf[100];
-    int idx;
-
-    // Pokaż dane wejściowe
-    idx = sprintf(buf, "Input data: ");
-    for(size_t i = 0; i < length; i++) {
-        idx += sprintf(buf + idx, "%02X ", data[i]);
-    }
-    sprintf(buf + idx, "\r\n");
-    USART_sendFrame((uint8_t*)buf, strlen(buf));
-
-    // Pokaż proces
-    for (size_t i = 0; i < length; i++) {
-        uint8_t byte = data[i];
-        uint8_t table_index = (crc >> 8) ^ byte;
-        uint16_t old_crc = crc;
-        crc = (crc << 8) ^ crc16_table[table_index];
-
-        idx = sprintf(buf, "Step %zu: byte=%02X, index=%02X, old_crc=%04X, new_crc=%04X\r\n",
-                     i, byte, table_index, old_crc, crc);
-        USART_sendFrame((uint8_t*)buf, idx);
-    }
-
-    // Pokaż wynik końcowy
-    sprintf(buf, "Final CRC: %02X %02X\r\n", (crc >> 8) & 0xFF, crc & 0xFF);
-    USART_sendFrame((uint8_t*)buf, strlen(buf));
-}
