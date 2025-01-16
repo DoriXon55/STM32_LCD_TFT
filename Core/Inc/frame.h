@@ -35,7 +35,7 @@
 #define MAX_FRAME_LEN 270
 #define COMMAND_LENGTH 3
 #define MIN_DECODED_FRAME_LEN 7
-
+#define MAX_FRAME_WITHOUT_STUFFING 135
 
 //====================KOMENDY KTÓRE UŻYTKOWNIK MOŻE WYKONAĆ=========================
 #define COMMAND_COUNT 5

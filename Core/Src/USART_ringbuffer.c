@@ -21,7 +21,7 @@ void ringBufferSetup(ring_buffer* rb, uint8_t* buffer, uint32_t size)
 	rb->buffer = buffer;
 	rb->readIndex = 0;
 	rb->writeIndex = 0;
-	rb->mask = size - 1;
+	rb->mask = size;
 }
 
 /************************************************************************
@@ -48,7 +48,7 @@ uint8_t USART_kbhit(){
 int16_t USART_getchar() {
     if (rxRingBuffer.writeIndex != rxRingBuffer.readIndex) {
         int16_t tmp = USART_RxBuf[rxRingBuffer.readIndex];
-        rxRingBuffer.readIndex = (rxRingBuffer.readIndex + 1) & rxRingBuffer.mask;
+        rxRingBuffer.readIndex = (rxRingBuffer.readIndex + 1) % rxRingBuffer.mask;
         return tmp;
     }
     return -1;
@@ -101,7 +101,7 @@ void USART_sendFrame(const uint8_t* data, size_t length) {
        (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_TXE) == SET)) {
         txRingBuffer.writeIndex = idx;
         uint8_t tmp = USART_TxBuf[txRingBuffer.readIndex];
-        txRingBuffer.readIndex = (txRingBuffer.readIndex + 1) & txRingBuffer.mask;
+        txRingBuffer.readIndex = (txRingBuffer.readIndex + 1) % txRingBuffer.mask;
         HAL_UART_Transmit_IT(&huart2, &tmp, 1);
     } else {
         txRingBuffer.writeIndex = idx;

@@ -872,6 +872,7 @@ void processReceivedChar(uint8_t received_char) {
             resetFrameState();
         }
     } else if (in_frame) {
+    	if(bx_index < MAX_FRAME_WITHOUT_STUFFING) {
         if (escape_detected) {
             if (received_char == FRAME_START_STUFF) {
                 bx[bx_index++] = FRAME_START;
@@ -887,15 +888,13 @@ void processReceivedChar(uint8_t received_char) {
         } else if (received_char == ESCAPE_CHAR) {
             escape_detected = true;
         } else {
-            if (bx_index < sizeof(bx)) {
-                bx[bx_index++] = received_char;
-            } else {
-            	resetFrameState();
-            }
+        	bx[bx_index++] = received_char;
         }
     } else {
+    	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL");
     	resetFrameState();
     }
+   }
 }
 
 /************************************************************************

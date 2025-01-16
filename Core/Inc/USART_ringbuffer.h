@@ -14,8 +14,8 @@
 #include <stdint.h>
 
 //==============================DEFINICJE WIELKOŚCI BUFORA KOŁOWEGO=============================
-#define TX_BUFFER_SIZE 2048
-#define RX_BUFFER_SIZE 256
+#define TX_BUFFER_SIZE 1890
+#define RX_BUFFER_SIZE 270
 
 typedef struct {
 	uint8_t* buffer;

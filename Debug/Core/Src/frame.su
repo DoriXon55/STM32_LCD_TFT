@@ -18,5 +18,5 @@
 ../Core/Src/frame.c:682:6:prepareFrame	212	static
 ../Core/Src/frame.c:778:6:decodeFrame	32	static
 ../Core/Src/frame.c:850:6:processReceivedChar	16	static
-../Core/Src/frame.c:935:6:handleCommand	88	static
-../Core/Src/frame.c:983:6:updateScrollingText	32	static
+../Core/Src/frame.c:934:6:handleCommand	88	static
+../Core/Src/frame.c:982:6:updateScrollingText	32	static
