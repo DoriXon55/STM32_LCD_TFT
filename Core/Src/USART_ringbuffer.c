@@ -81,20 +81,11 @@ void USART_sendFrame(const uint8_t* data, size_t length) {
     int idx = txRingBuffer.writeIndex;
 
     __disable_irq();
-
-    // Dodaj początek ramki
-    USART_TxBuf[idx] = FRAME_START;
-    idx = (idx + 1) % txRingBuffer.mask;
-
     // Kopiuj dane do bufora nadawczego
     for(size_t i = 0; i < length; i++) {
         USART_TxBuf[idx] = data[i];
         idx = (idx + 1) % txRingBuffer.mask;
     }
-
-    // Dodaj koniec ramki
-    USART_TxBuf[idx] = FRAME_END;
-    idx = (idx + 1) % txRingBuffer.mask;
 
     // Rozpocznij transmisję jeśli bufor był pusty
     if((txRingBuffer.writeIndex == txRingBuffer.readIndex) &&

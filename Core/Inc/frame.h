@@ -78,10 +78,10 @@ typedef struct {
 
 typedef struct {
     wchar_t displayText[50];
-    uint8_t x;              // Aktualna pozycja X
-    uint8_t y;              // Aktualna pozycja Y
-    uint8_t startX;         // Początkowa pozycja X
-    uint8_t startY;         // Początkowa pozycja Y
+    int16_t x;              // Aktualna pozycja X
+    int16_t y;              // Aktualna pozycja Y
+    int16_t startX;         // Początkowa pozycja X
+    int16_t startY;         // Początkowa pozycja Y
     uint8_t fontSize;
     uint8_t scrollSpeed;
     uint16_t color;

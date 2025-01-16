@@ -420,6 +420,7 @@ static void executeONT(Frame *frame)
 ************************************************************************/
 static void executeONN(Frame *frame)
 {
+	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "HI THIS IS ME MARIO");
     const char charText[50] = {0};
 
     if (!parseParameters(frame->data, "uuuust", &text.x, &text.y, &text.fontSize, &text.scrollSpeed, &text.color, charText)) {
@@ -430,7 +431,7 @@ static void executeONN(Frame *frame)
     // Zapisz początkowe pozycje
     memset(text.displayText, 0, sizeof(text.displayText));
     text.startX = text.x;
-    text.startY = text.y;
+    text.startY = text.y;  // Ta wartość będzie używana do stałej pozycji Y
     text.textLength = 0;
     text.firstIteration = true;
     // Konwersja tekstu
@@ -629,74 +630,65 @@ size_t byteStuffing(uint8_t *input, size_t input_len, uint8_t *output) {
 *   7. Wysyła ramkę
 ************************************************************************/
 void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const char *format, ...) {
-	Frame frame = {0};
+    Frame frame = {0};
     frame.sender = sender;
     frame.receiver = receiver;
     strncpy((char *)frame.command, command, COMMAND_LENGTH);
 
-    // Użycie dynamicznej alokacji do przechowywania danych sformatowanych
-    char *formatted_data = (char *)malloc(MAX_DATA_SIZE);
-    if (formatted_data == NULL) {
-        // Obsługa błędu alokacji pamięci
-        return;
-    }
-
+    // Stały bufor na sformatowane dane
+    uint8_t formatted_data[MAX_DATA_SIZE];
     va_list args;
     va_start(args, format);
-    vsnprintf(formatted_data, MAX_DATA_SIZE, format, args);
+    vsnprintf((char *)formatted_data, MAX_DATA_SIZE, format, args);
     va_end(args);
 
-    size_t data_len = strlen(formatted_data);
+    size_t data_len = strlen((char *)formatted_data);
 
-    // Użycie dynamicznej alokacji do obliczeń CRC
-    size_t crc_input_len = 2 + COMMAND_LENGTH + data_len;
-    uint8_t *crc_input = (uint8_t *)malloc(crc_input_len);
-    if (crc_input == NULL) {
-        // Obsługa błędu alokacji pamięci
-        free(formatted_data);
-        return;
-    }
+    // Bufor na dane do obliczenia CRC
+    uint8_t crc_input[MAX_FRAME_WITHOUT_STUFFING];
+    size_t crc_input_len = 0;
 
-    crc_input[0] = frame.sender;
-    crc_input[1] = frame.receiver;
-    memcpy(crc_input + 2, frame.command, COMMAND_LENGTH);
-    memcpy(crc_input + 2 + COMMAND_LENGTH, formatted_data, data_len);
+    // Przygotowanie danych do CRC
+    crc_input[crc_input_len++] = frame.sender;
+    crc_input[crc_input_len++] = frame.receiver;
+    memcpy(crc_input + crc_input_len, frame.command, COMMAND_LENGTH);
+    crc_input_len += COMMAND_LENGTH;
+    memcpy(crc_input + crc_input_len, formatted_data, data_len);
+    crc_input_len += data_len;
 
+    // Obliczenie CRC
     char crc_output[2];
     calculateCrc16(crc_input, crc_input_len, crc_output);
-    free(crc_input);  // Zwolnienie pamięci po zakończeniu używania
 
-    // Użycie dynamicznej alokacji do przechowywania ramki
-    size_t raw_payload_len = 2 + COMMAND_LENGTH + data_len + 4;
-    uint8_t *raw_payload = (uint8_t *)malloc(raw_payload_len);
-    if (raw_payload == NULL) {
-        free(formatted_data);
-        return;
-    }
+    // Przygotowanie surowej ramki
+    uint8_t raw_payload[MAX_FRAME_WITHOUT_STUFFING];
+    size_t raw_payload_len = 0;
 
-    raw_payload[0] = frame.sender;
-    raw_payload[1] = frame.receiver;
-    memcpy(raw_payload + 2, frame.command, COMMAND_LENGTH);
-    memcpy(raw_payload + 2 + COMMAND_LENGTH, formatted_data, data_len);
+    raw_payload[raw_payload_len++] = frame.sender;
+    raw_payload[raw_payload_len++] = frame.receiver;
+    memcpy(raw_payload + raw_payload_len, frame.command, COMMAND_LENGTH);
+    raw_payload_len += COMMAND_LENGTH;
+    memcpy(raw_payload + raw_payload_len, formatted_data, data_len);
+    raw_payload_len += data_len;
 
-    char crc_hex[5];
-    snprintf(crc_hex, sizeof(crc_hex), "%02X%02X", (uint8_t)crc_output[0], (uint8_t)crc_output[1]);
-    memcpy(raw_payload + 2 + COMMAND_LENGTH + data_len, crc_hex, 4);
-    free(formatted_data);  // Zwolnienie pamięci po zakończeniu używania
+    // Dodanie surowego CRC (2 bajty)
+    raw_payload[raw_payload_len++] = crc_output[0];
+    raw_payload[raw_payload_len++] = crc_output[1];
 
-    // Użycie dynamicznej alokacji do przechowywania danych po byte stuffing
-    uint8_t *stuffed_payload = (uint8_t *)malloc(512);  // Maksymalny rozmiar bufora
-    if (stuffed_payload == NULL) {
-        free(raw_payload);
-        return;
-    }
-
+    // Bufor na dane po byte stuffing
+    uint8_t stuffed_payload[MAX_FRAME_LEN];
     size_t stuffed_len = byteStuffing(raw_payload, raw_payload_len, stuffed_payload);
-    free(raw_payload);  // Zwolnienie pamięci po zakończeniu używania
 
-    // Wysyłanie ramki przez UART
-    USART_sendFrame(stuffed_payload, stuffed_len);
-    free(stuffed_payload);  // Zwolnienie pamięci po zakończeniu używania
+    // Przygotowanie końcowej ramki z FRAME_START i FRAME_END
+    uint8_t final_frame[MAX_FRAME_LEN + 2];
+    size_t final_len = 0;
+
+    final_frame[final_len++] = FRAME_START;
+    memcpy(final_frame + final_len, stuffed_payload, stuffed_len);
+    final_len += stuffed_len;
+    final_frame[final_len++] = FRAME_END;
+    // Wysłanie ramki
+    USART_sendFrame(final_frame, final_len);
 }
 
 /************************************************************************
@@ -728,18 +720,20 @@ bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len) {
     char ownCrc[2];
     char incCrc[2];
 
-    if(len >= MIN_DECODED_FRAME_LEN && len <= MAX_FRAME_LEN) {
+    if(len >= MIN_FRAME_LEN && len <= MAX_FRAME_LEN) {
         uint8_t k = 0;
 
         // Debug otrzymanych danych
 
 
         frame->sender = bx[k++];
+        frame->receiver = bx[k++];
         if(frame->sender != 'g')
         {
+        	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "WRONG_SENDER");
         	return false;
         }
-        frame->receiver = bx[k++];
+
 
         memcpy(frame->command, &bx[k], COMMAND_LENGTH);
         k += COMMAND_LENGTH;
@@ -752,10 +746,12 @@ bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len) {
         memcpy(incCrc, &bx[k], 2);
         calculateCrc16((uint8_t *)frame, k, ownCrc);
         if(ownCrc[0] != incCrc[0] || ownCrc[1] != incCrc[1]) {
+        	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "WRONG_CRC");
             return false;
         }
         return true;
     }
+	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "WRONG_LENGTH");
     return false;
 }
 
@@ -789,7 +785,11 @@ bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len) {
 *   - Nieoczekiwane znaki początku/końca
 ************************************************************************/
 void processReceivedChar(uint8_t received_char) {
+	char debug[50];
+	    sprintf(debug, "0x%02X", received_char);
+	    HAL_UART_Transmit(&huart2, (uint8_t*)debug, strlen(debug), HAL_MAX_DELAY);
     if (received_char == FRAME_START) {
+        HAL_UART_Transmit(&huart2, (uint8_t*)"Frame Start detected\r\n", 21, HAL_MAX_DELAY);
     	if(in_frame) {
     		resetFrameState();
     		in_frame = true;
@@ -799,17 +799,18 @@ void processReceivedChar(uint8_t received_char) {
     	escape_detected = false;
 
     } else if (received_char == FRAME_END && escape_detected == false) {
+        HAL_UART_Transmit(&huart2, (uint8_t*)"Frame End detected\r\n", 19, HAL_MAX_DELAY);
         if (in_frame) {
             if (decodeFrame(bx, &frame, bx_index)) {
                 prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "GOOD");
             	stopAnimation();
                 handleCommand(&frame);
             } else {
-                prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL");
+                prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL DECODE");
             }
             resetFrameState();
         } else {
-            prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL");
+            prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL FRAME");
             resetFrameState();
         }
     } else if (in_frame) {
@@ -822,7 +823,7 @@ void processReceivedChar(uint8_t received_char) {
             } else if (received_char == FRAME_END_STUFF) {
                 bx[bx_index++] = FRAME_END;
             } else {
-                prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL");
+                prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL UNSTUFFING");
                 resetFrameState();
             }
             escape_detected = false;
@@ -832,11 +833,13 @@ void processReceivedChar(uint8_t received_char) {
         	bx[bx_index++] = received_char;
         }
     } else {
-    	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL");
+    	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL INDEX");
     	resetFrameState();
     }
    }
 }
+
+
 
 /************************************************************************
 * Funkcja: handleCommand()
@@ -873,9 +876,11 @@ void processReceivedChar(uint8_t received_char) {
 *   - Przekroczenie obszaru wyświetlacza
 ************************************************************************/
 void handleCommand(Frame *frame) {
+	prepareFrame(STM32_ADDR,PC_ADDR,"BCK", "siema");
     if (frame == NULL) {
         return;
     }
+	prepareFrame(STM32_ADDR,PC_ADDR,"BCK", "halo");
 
     CommandEntry commandTable[COMMAND_COUNT] = {
         {"ONK", executeONK},
@@ -921,57 +926,52 @@ void handleCommand(Frame *frame) {
 
 
 void updateScrollingText(void) {
-	if (!text.isScrolling || text.scrollSpeed == 0) {
-	        return;
-	}
+    if (!text.isScrolling || text.scrollSpeed == 0) {
+        return;
+    }
+
     uint32_t currentTime = HAL_GetTick();
     if ((currentTime - text.lastUpdate) >= (256 - text.scrollSpeed)) {
         text.lastUpdate = currentTime;
 
-        // Oblicz szerokość znaku w zależności od fontu
         uint8_t charWidth;
         uint8_t charHeight;
         const uint8_t* font;
         switch(text.fontSize) {
             case 1: charWidth = 5; charHeight = 7; font=font5x7; break;
             case 2: charWidth = 5; charHeight = 8; font=font5x8; break;
-            case 3: charWidth = 6; charHeight = 9; font=font6x9;break;
+            case 3: charWidth = 6; charHeight = 9; font=font6x9; break;
             default: charWidth = 5; charHeight = 7; font=font5x7; break;
         }
 
-        text.x += charWidth;
+        // Oblicz całkowitą szerokość tekstu
+        int16_t textWidth = text.textLength * charWidth;
 
-                // Oblicz całkowitą szerokość tekstu
+        // Przewijanie od lewej do prawej
+        if (!text.firstIteration) {
+            text.x+=text.textLength;  // Przesuwamy w prawo
 
-                // Jeśli tekst wyszedł całkowicie za ekran
-                if (text.x >= LCD_WIDTH - (charWidth * text.textLength)) {
-                    if (text.firstIteration) {
-                        // W pierwszej iteracji używamy startowych współrzędnych
-                        text.x = text.startX;  // Zaczynamy zza lewej krawędzi
-                        text.y += charHeight;
+            // Jeśli tekst całkowicie wyszedł z prawej strony
+            if (text.x > LCD_WIDTH) {
+                text.x = -textWidth; // Wróć na lewą stronę
+                text.y += charHeight; // Przejdź do następnej linii
 
-                        // Jeśli doszliśmy do dołu ekranu w pierwszej iteracji
-                        if (text.y >= LCD_HEIGHT - charHeight) {
-                            text.firstIteration = false;  // Kończymy pierwszą iterację
-                            text.x = 0;
-                            text.y = 0;
-                        }
-                    } else {
-                        // W kolejnych iteracjach zaczynamy od lewej krawędzi
-                        text.x = 0;
-                        text.y += charHeight;
-
-                        // Jeśli doszliśmy do dołu ekranu
-                        if (text.y >= LCD_HEIGHT - charHeight) {
-                            text.y = 0;
-                        }
-                    }
+                // Jeśli doszliśmy do dołu ekranu
+                if (text.y >= LCD_HEIGHT - charHeight) {
+                    text.y = text.startY; // Wróć na początkową wysokość
                 }
+            }
+        } else {
+            // Pierwsza iteracja - start z lewej strony
+            text.x = -textWidth;
+            text.y = text.startY;
+            text.firstIteration = false;
+        }
+
+
             lcdClear();
             hagl_put_text(text.displayText, text.x, text.y, text.color, font);
             lcdCopy();
+
     }
 }
-
-
-

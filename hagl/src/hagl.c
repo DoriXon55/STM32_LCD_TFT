@@ -334,25 +334,22 @@ uint8_t hagl_get_glyph(wchar_t code, color_t color, bitmap_t *bitmap, const uint
     return 0;
 }
 
-uint8_t hagl_put_char(wchar_t code, int16_t x0, int16_t y0, color_t color, const uint8_t *font)
-{
+uint8_t hagl_put_char(wchar_t code, int16_t x0, int16_t y0, color_t color, const uint8_t *font) {
     uint8_t set, status;
     color_t buffer[HAGL_CHAR_BUFFER_SIZE];
     bitmap_t bitmap;
     fontx_glyph_t glyph;
 
     status = fontx_glyph(&glyph, code, font);
-
     if (0 != status) {
         return 0;
     }
 
-    bitmap.width = glyph.width,
-    bitmap.height = glyph.height,
-    bitmap.depth = DISPLAY_DEPTH,
+    bitmap.width = glyph.width;
+    bitmap.height = glyph.height;
+    bitmap.depth = DISPLAY_DEPTH;
 
     bitmap_init(&bitmap, (uint8_t *)buffer);
-
     color_t *ptr = (color_t *) bitmap.buffer;
 
     for (uint8_t y = 0; y < glyph.height; y++) {
@@ -367,7 +364,22 @@ uint8_t hagl_put_char(wchar_t code, int16_t x0, int16_t y0, color_t color, const
         glyph.buffer += glyph.pitch;
     }
 
-    hagl_blit(x0, y0, &bitmap);
+    // Modyfikacja: obsługa częściowego wyświetlania znaku
+    int16_t start_x = max(0, -x0);
+    int16_t start_y = max(0, -y0);
+    int16_t end_x = min(bitmap.width, LCD_WIDTH - x0);
+    int16_t end_y = min(bitmap.height, LCD_HEIGHT - y0);
+
+    if (start_x < end_x && start_y < end_y) {
+        for (int16_t y = start_y; y < end_y; y++) {
+            for (int16_t x = start_x; x < end_x; x++) {
+                color_t pixel = buffer[y * bitmap.width + x];
+                if (pixel != 0x0000) { // tylko nieprzezroczyste piksele
+                    hagl_put_pixel(x0 + x, y0 + y, pixel);
+                }
+            }
+        }
+    }
 
     return bitmap.width;
 }
