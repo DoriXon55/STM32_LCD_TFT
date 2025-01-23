@@ -89,16 +89,15 @@ uint16_t crc16_table[256] = {
 * Korzysta z:
 *   - crc16_table: Tablica lookup z wstępnie obliczonymi wartościami
 ************************************************************************/
-void calculateCrc16(uint8_t *data, size_t length, char crc_out[2]) {
-    uint16_t crc = 0xFFFF; // wartość inicjująca
+void calculateCrc16(uint8_t *data, size_t length, uint8_t crc_out[2]) {
+    uint16_t crc = 0xFFFF;
 
     for (size_t i = 0; i < length; i++) {
         uint8_t byte = data[i];
-        uint8_t table_index = (crc >> 8) ^ byte; // oblicz indeks tablicy
-        crc = (crc << 8) ^ crc16_table[table_index]; // zaktualizuj crc uzywajac wartosci stablicowanej
+        uint8_t table_index = (crc >> 8) ^ byte;
+        crc = (crc << 8) ^ crc16_table[table_index];
     }
-    crc_out[0] = ((crc >> 8) & 0xFF); // bajt po lewej
-    crc_out[1] = (crc & 0xFF);        // bajt po prawej
+    crc_out[0] = ((crc >> 8) & 0xFF);
+    crc_out[1] = (crc & 0xFF);
 }
-
 

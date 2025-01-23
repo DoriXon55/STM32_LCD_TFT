@@ -419,7 +419,6 @@ uint16_t hagl_put_text(const wchar_t *str, int16_t x0, int16_t y0, color_t color
  * parameter is left out intentionally to keep the API simpler. If you need
  * configurable source and destination see the file blit.c.
  *
- * TODO: Handle transparency.
  */
 
 void hagl_blit(int16_t x0, int16_t y0, bitmap_t *source) {

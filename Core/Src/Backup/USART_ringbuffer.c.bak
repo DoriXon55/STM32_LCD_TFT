@@ -21,7 +21,7 @@ void ringBufferSetup(ring_buffer* rb, uint8_t* buffer, uint32_t size)
 	rb->buffer = buffer;
 	rb->readIndex = 0;
 	rb->writeIndex = 0;
-	rb->mask = size - 1;
+	rb->mask = size;
 }
 
 /************************************************************************
@@ -81,32 +81,18 @@ void USART_sendFrame(const uint8_t* data, size_t length) {
     int idx = txRingBuffer.writeIndex;
 
     __disable_irq();
-
-    // Dodaj początek ramki
-    USART_TxBuf[idx] = FRAME_START;
-    idx++;
-    if(idx >= TX_BUFFER_SIZE) idx = 0;
-
     // Kopiuj dane do bufora nadawczego
     for(size_t i = 0; i < length; i++) {
         USART_TxBuf[idx] = data[i];
-        idx++;
-        if(idx >= TX_BUFFER_SIZE) idx = 0;
+        idx = (idx + 1) % txRingBuffer.mask;
     }
-
-    // Dodaj koniec ramki
-    USART_TxBuf[idx++] = FRAME_END;
-    USART_TxBuf[idx] = "\n\r";
-    idx++;
-    if(idx >= TX_BUFFER_SIZE) idx = 0;
 
     // Rozpocznij transmisję jeśli bufor był pusty
     if((txRingBuffer.writeIndex == txRingBuffer.readIndex) &&
        (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_TXE) == SET)) {
         txRingBuffer.writeIndex = idx;
         uint8_t tmp = USART_TxBuf[txRingBuffer.readIndex];
-        txRingBuffer.readIndex++;
-        if(txRingBuffer.readIndex >= TX_BUFFER_SIZE) txRingBuffer.readIndex = 0;
+        txRingBuffer.readIndex = (txRingBuffer.readIndex + 1) % txRingBuffer.mask;
         HAL_UART_Transmit_IT(&huart2, &tmp, 1);
     } else {
         txRingBuffer.writeIndex = idx;

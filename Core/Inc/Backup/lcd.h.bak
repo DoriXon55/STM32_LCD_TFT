@@ -35,9 +35,17 @@
 #define LCD_HEIGHT	128
 
 //====================DEFINICJA PRZYKŁADOWYCH KOLORÓW=============
+/*
+ * układ pracuje w trybie little-endian, więc najpierw w pamięci jest
+ * zapisany młodzszy bajt a następnie starszy. Dlatego wysyłane dane
+ * koloru są ustawione odwrotnie.
+ * Można użyć funkcji __REV16(), jest to instrukcja z asemblera, ale tutaj
+ * przestawilem bajty.
+ */
+
 typedef enum{
 	BLACK = 0x0000,
-	RED = 0x00f8,
+	RED = 0x00F8,
 	GREEN = 0xE007,
 	BLUE = 0x1F00,
 	YELLOW = 0xE0FF,

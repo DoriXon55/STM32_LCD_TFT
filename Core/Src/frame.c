@@ -16,11 +16,12 @@
 #include "hagl.h"
 #include "rgb565.h"
 #include <ctype.h>
+#include <math.h>
 #include "crc.h"
 
 //=========================ZMIENNE DO RAMKI=============================
 
-uint8_t bx[256];
+uint8_t bx[MAX_FRAME_LEN];
 bool escape_detected = false;
 int bx_index = 0;
 bool in_frame = false;
@@ -28,11 +29,56 @@ uint8_t received_char;
 Frame frame;
 ScrollingTextState text = {0};
 
+
+
+/************************************************************************
+* Funkcja: resetFrameState()
+* Cel: Resetuje stan maszyny stanów odbierającej ramki
+* Funkcja pomocnicza wywoływana gdy:
+* 	- Wykryto błąd w ramce
+*   - Zakończono przetwarzanie ramki
+*   - Potrzebny jest reset stanu odbierania
+*
+* Zmienne globalne:
+*   - in_frame: Flaga oznaczająca czy jesteśmy w trakcie odbierania ramki
+*   - escape_detected: Flaga oznaczająca wykrycie znaku escape
+*   - bx_index: Indeks w buforze odbiorczym
+************************************************************************/
+static void resetFrameState() {
+    in_frame = false;
+    escape_detected = false;
+    bx_index = 0;
+}
+
 static void stopAnimation(void)
 {
 	text.isScrolling = false;
 }
 
+/************************************************************************
+* Funkcja: isWithinBounds()
+* Cel: Sprawdza czy podane współrzędne mieszczą się w wymiarach ekranu
+*
+* Parametry:
+*   - x: Współrzędna X (int)
+*   - y: Współrzędna Y (int)
+*
+* Zwraca:
+*   - true: Jeśli punkt mieści się w wymiarach ekranu
+*   - false: Jeśli punkt jest poza ekranem
+*
+* Sprawdza:
+*   1. x >= 0 && x < LCD_WIDTH
+*   2. y >= 0 && y < LCD_HEIGHT
+*
+* Korzysta z:
+*   - LCD_WIDTH: Stała określająca szerokość ekranu
+*   - LCD_HEIGHT: Stała określająca wysokość ekranu
+************************************************************************/
+static bool isWithinBounds(int x, int y)
+{
+	return (x >= 0 && x < LCD_WIDTH)&&(y >= 0 && y < LCD_HEIGHT);
+}
 
 static bool safeCompare(const char* str1, const char* str2, size_t len)
 {
@@ -43,6 +89,29 @@ static bool safeCompare(const char* str1, const char* str2, size_t len)
 	return memcmp(str1, str2, len) == 0;
 }
 
+
+
+static bool isValidTriangle(int16_t x1, int16_t y1, int16_t x2, int16_t y2, int16_t x3, int16_t y3) {
+    // Obliczamy kwadraty długości boków
+    int32_t a2 = (int32_t)(x2 - x1) * (x2 - x1) + (int32_t)(y2 - y1) * (y2 - y1);
+    int32_t b2 = (int32_t)(x3 - x2) * (x3 - x2) + (int32_t)(y3 - y2) * (y3 - y2);
+    int32_t c2 = (int32_t)(x1 - x3) * (x1 - x3) + (int32_t)(y1 - y3) * (y1 - y3);
+
+    // Sprawdzamy nierówność trójkąta używając kwadratów długości
+    // Jeśli a² + b² ≤ c² (lub podobnie dla innych kombinacji),
+    // to trójkąt nie może istnieć
+    if (a2 + b2 <= c2 || b2 + c2 <= a2 || c2 + a2 <= b2) {
+        return false;
+    }
+
+    // Sprawdzamy czy punkty nie leżą na jednej linii
+    int32_t cross = (int32_t)(x2 - x1) * (y3 - y1) - (int32_t)(y2 - y1) * (x3 - x1);
+    if (cross == 0) {
+        return false;
+    }
+
+    return true;
+}
 /************************************************************************
 * Funkcja: parseColor()
 * Cel: Konwersja nazwy koloru na wartość Color_t
@@ -70,6 +139,15 @@ static bool safeCompare(const char* str1, const char* str2, size_t len)
 *   - name: string z nazwą koloru
 *   - value: wartość Color_t w formacie RGB565
 ************************************************************************/
+
+void sendStatus(StatusCode_t status) {
+    if(status < STATUS_COUNT) {
+        prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "%s", STATUS_MESSAGES[status]);
+    }
+}
+
+
+
 bool parseColor(const char* color_name, Color_t* color) {
     if (color_name == NULL || color == NULL) {
         return false;
@@ -86,25 +164,6 @@ bool parseColor(const char* color_name, Color_t* color) {
 }
 
 
-
-/************************************************************************
-* Funkcja: resetFrameState()
-* Cel: Resetuje stan maszyny stanów odbierającej ramki
-* Funkcja pomocnicza wywoływana gdy:
-* 	- Wykryto błąd w ramce
-*   - Zakończono przetwarzanie ramki
-*   - Potrzebny jest reset stanu odbierania
-*
-* Zmienne globalne:
-*   - in_frame: Flaga oznaczająca czy jesteśmy w trakcie odbierania ramki
-*   - escape_detected: Flaga oznaczająca wykrycie znaku escape
-*   - bx_index: Indeks w buforze odbiorczym
-************************************************************************/
-static void resetFrameState() {
-    in_frame = false;
-    escape_detected = false;
-    bx_index = 0;
-}
 
 
 /************************************************************************
@@ -184,10 +243,9 @@ bool parseParameters(const uint8_t* data, const char* format, ...) {
             case 's': {
                 // Zbierz znaki do przecinka
                 token_idx = 0;
-                while (*data_ptr && *data_ptr != ',' && token_idx < 50) {
+                while (*data_ptr && *data_ptr != ',' && token_idx <= 10) {
                     token[token_idx++] = *data_ptr++;
                 }
-                token[token_idx] = '\0';
                 if (*data_ptr == ',') data_ptr++;
 
                 Color_t* color_ptr = va_arg(args, Color_t*);
@@ -198,24 +256,20 @@ bool parseParameters(const uint8_t* data, const char* format, ...) {
                 break;
             }
             case 't': {
-                // Zbierz pozostały tekst
                 token_idx = 0;
                 while (*data_ptr && token_idx < 50) {
                     token[token_idx++] = *data_ptr++;
                 }
-                token[token_idx] = '\0';
 
-                // Sprawdź długość tekstu na podstawie scrollSpeed
                 size_t maxLength = (scrollSpeed == 0) ? 25 : 50;
                 if (token_idx > maxLength) {
                     va_end(args);
-                    prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "TOO_MUCH_TEXT%s", token_idx);
+                    sendStatus(ERR_TOO_MUCH_TEXT);
                     return false;  // Tekst jest za długi
                 }
 
                 char* text_ptr = va_arg(args, char*);
-                strncpy(text_ptr, (char*)token, token_idx);
-                text_ptr[token_idx] = '\0';
+                memcpy(text_ptr, token, token_idx);
                 break;
             }
             default:
@@ -286,7 +340,7 @@ static void executeONK(Frame *frame)
 	Color_t color = 0;
     if (!parseParameters(frame->data, "uuuus", &x, &y, &r, &filling, &color))
     {
-		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
+    	sendStatus(ERR_NOT_RECOGNIZED);
         return;
     }
 	switch(filling)
@@ -329,7 +383,7 @@ static void executeONP(Frame *frame)
 	uint8_t x = 0, y = 0, width = 0, height = 0, filling = 0;
 	Color_t color = 0;
 	if (!parseParameters(frame->data, "uuuuus", &x, &y, &width, &height, &filling, &color)) {
-		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
+    	sendStatus(ERR_NOT_RECOGNIZED);
 		return;
 	}
 
@@ -374,8 +428,12 @@ static void executeONT(Frame *frame)
     Color_t color = 0;
     if (!parseParameters(frame->data, "uuuuuuus", &x1, &y1, &x2, &y2, &x3, &y3, &filling, &color))
     {
-		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
+    	sendStatus(ERR_NOT_RECOGNIZED);
         return;
+    }
+    if (!isValidTriangle(x1, y1, x2, y2, x3, y3)) {
+    	sendStatus(ERR_INVALID_TRIANGLE);
+            return;
     }
     switch(filling)
     {
@@ -387,7 +445,6 @@ static void executeONT(Frame *frame)
             break;
     }
 }
-
 
 
 
@@ -420,11 +477,9 @@ static void executeONT(Frame *frame)
 ************************************************************************/
 static void executeONN(Frame *frame)
 {
-	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "HI THIS IS ME MARIO");
     const char charText[50] = {0};
-
     if (!parseParameters(frame->data, "uuuust", &text.x, &text.y, &text.fontSize, &text.scrollSpeed, &text.color, charText)) {
-        prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
+    	sendStatus(ERR_NOT_RECOGNIZED);
         return;
     }
 
@@ -471,7 +526,6 @@ static void executeONN(Frame *frame)
 *   case 1: Czyszczenie ekranu
 *     - Używa hagl_fill_rectangle(0,0, LCD_WIDTH, LCD_HEIGHT, BLACK)
 *
-* TODO naprawic wylaczenie oraz reset
 ************************************************************************/
 static void executeOFF(Frame *frame)
 {
@@ -485,35 +539,12 @@ static void executeOFF(Frame *frame)
 		lcdClear();
 		break;
 	default:
-		prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "WRONG_DATA%c", frame->data[0]);
+    	sendStatus(ERR_WRONG_OFF_DATA);
 	}
 }
 
 
-/************************************************************************
-* Funkcja: isWithinBounds()
-* Cel: Sprawdza czy podane współrzędne mieszczą się w wymiarach ekranu
-*
-* Parametry:
-*   - x: Współrzędna X (int)
-*   - y: Współrzędna Y (int)
-*
-* Zwraca:
-*   - true: Jeśli punkt mieści się w wymiarach ekranu
-*   - false: Jeśli punkt jest poza ekranem
-*
-* Sprawdza:
-*   1. x >= 0 && x < LCD_WIDTH
-*   2. y >= 0 && y < LCD_HEIGHT
-*
-* Korzysta z:
-*   - LCD_WIDTH: Stała określająca szerokość ekranu
-*   - LCD_HEIGHT: Stała określająca wysokość ekranu
-************************************************************************/
-bool isWithinBounds(int x, int y)
-{
-	return (x >= 0 && x < LCD_WIDTH)&&(y >= 0 && y < LCD_HEIGHT);
-}
+
 
 /************************************************************************
 * Funkcja: parseCoordinates()
@@ -636,59 +667,55 @@ void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const c
     strncpy((char *)frame.command, command, COMMAND_LENGTH);
 
     // Stały bufor na sformatowane dane
-    uint8_t formatted_data[MAX_DATA_SIZE];
+    uint8_t formattedData[MAX_DATA_SIZE];
     va_list args;
     va_start(args, format);
-    vsnprintf((char *)formatted_data, MAX_DATA_SIZE, format, args);
+    vsnprintf((char *)formattedData, MAX_DATA_SIZE, format, args);
     va_end(args);
 
-    size_t data_len = strlen((char *)formatted_data);
+    size_t dataLen = strlen((char *)formattedData);
 
     // Bufor na dane do obliczenia CRC
-    uint8_t crc_input[MAX_FRAME_WITHOUT_STUFFING];
-    size_t crc_input_len = 0;
+    uint8_t crcInput[MAX_FRAME_WITHOUT_STUFFING];
+    size_t crcInputLen = 0;
 
     // Przygotowanie danych do CRC
-    crc_input[crc_input_len++] = frame.sender;
-    crc_input[crc_input_len++] = frame.receiver;
-    memcpy(crc_input + crc_input_len, frame.command, COMMAND_LENGTH);
-    crc_input_len += COMMAND_LENGTH;
-    memcpy(crc_input + crc_input_len, formatted_data, data_len);
-    crc_input_len += data_len;
+    crcInput[crcInputLen++] = frame.sender;
+    crcInput[crcInputLen++] = frame.receiver;
+    memcpy(crcInput + crcInputLen, frame.command, COMMAND_LENGTH);
+    crcInputLen += COMMAND_LENGTH;
+    memcpy(crcInput + crcInputLen, formattedData, dataLen);
+    crcInputLen += dataLen;
 
     // Obliczenie CRC
-    char crc_output[2];
-    calculateCrc16(crc_input, crc_input_len, crc_output);
+    uint8_t crcOutput[2];
+    calculateCrc16(crcInput, crcInputLen, crcOutput);
 
     // Przygotowanie surowej ramki
-    uint8_t raw_payload[MAX_FRAME_WITHOUT_STUFFING];
-    size_t raw_payload_len = 0;
+    uint8_t rawPayload[MAX_FRAME_WITHOUT_STUFFING];
+    size_t rawPayloadLen = 0;
 
-    raw_payload[raw_payload_len++] = frame.sender;
-    raw_payload[raw_payload_len++] = frame.receiver;
-    memcpy(raw_payload + raw_payload_len, frame.command, COMMAND_LENGTH);
-    raw_payload_len += COMMAND_LENGTH;
-    memcpy(raw_payload + raw_payload_len, formatted_data, data_len);
-    raw_payload_len += data_len;
+    rawPayload[rawPayloadLen++] = frame.sender;
+    rawPayload[rawPayloadLen++] = frame.receiver;
+    memcpy(rawPayload + rawPayloadLen, frame.command, COMMAND_LENGTH);
+    rawPayloadLen += COMMAND_LENGTH;
+    memcpy(rawPayload + rawPayloadLen, formattedData, dataLen);
+    rawPayloadLen += dataLen;
 
-    // Dodanie surowego CRC (2 bajty)
-    raw_payload[raw_payload_len++] = crc_output[0];
-    raw_payload[raw_payload_len++] = crc_output[1];
+    rawPayload[rawPayloadLen++] = crcOutput[0];
+    rawPayload[rawPayloadLen++] = crcOutput[1];
 
-    // Bufor na dane po byte stuffing
-    uint8_t stuffed_payload[MAX_FRAME_LEN];
-    size_t stuffed_len = byteStuffing(raw_payload, raw_payload_len, stuffed_payload);
+    uint8_t stuffedPayload[MAX_FRAME_LEN];
+    size_t stuffedLen = byteStuffing(rawPayload, rawPayloadLen, stuffedPayload);
 
-    // Przygotowanie końcowej ramki z FRAME_START i FRAME_END
-    uint8_t final_frame[MAX_FRAME_LEN + 2];
-    size_t final_len = 0;
+    uint8_t finalFrame[MAX_FRAME_LEN + 2];
+    size_t finalLen = 0;
 
-    final_frame[final_len++] = FRAME_START;
-    memcpy(final_frame + final_len, stuffed_payload, stuffed_len);
-    final_len += stuffed_len;
-    final_frame[final_len++] = FRAME_END;
-    // Wysłanie ramki
-    USART_sendFrame(final_frame, final_len);
+    finalFrame[finalLen++] = FRAME_START;
+    memcpy(finalFrame + finalLen, stuffedPayload, stuffedLen);
+    finalLen += stuffedLen;
+    finalFrame[finalLen++] = FRAME_END;
+    USART_sendFrame(finalFrame, finalLen);
 }
 
 /************************************************************************
@@ -717,20 +744,16 @@ void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const c
 *   - calculateCrc16: Obliczanie sumy kontrolnej
 ************************************************************************/
 bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len) {
-    char ownCrc[2];
-    char incCrc[2];
+    uint8_t ownCrc[2];
+    uint8_t incCrc[2];
 
-    if(len >= MIN_FRAME_LEN && len <= MAX_FRAME_LEN) {
+    if(len >= MIN_DECODED_FRAME_LEN && len <= MAX_FRAME_WITHOUT_STUFFING) {
         uint8_t k = 0;
-
-        // Debug otrzymanych danych
-
-
         frame->sender = bx[k++];
         frame->receiver = bx[k++];
         if(frame->sender != 'g')
         {
-        	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "WRONG_SENDER");
+        	sendStatus(ERR_WRONG_SENDER);
         	return false;
         }
 
@@ -738,7 +761,7 @@ bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len) {
         memcpy(frame->command, &bx[k], COMMAND_LENGTH);
         k += COMMAND_LENGTH;
 
-        uint8_t data_len = len - MIN_DECODED_FRAME_LEN;
+        uint8_t data_len = len - MIN_DECODED_FRAME_LEN; //to sprawdzic
         memcpy(frame->data, &bx[k], data_len);
         frame->data[data_len] = '\0';
         k += data_len;
@@ -746,12 +769,11 @@ bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len) {
         memcpy(incCrc, &bx[k], 2);
         calculateCrc16((uint8_t *)frame, k, ownCrc);
         if(ownCrc[0] != incCrc[0] || ownCrc[1] != incCrc[1]) {
-        	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "WRONG_CRC");
+        	sendStatus(ERR_WRONG_CRC);
             return false;
         }
         return true;
     }
-	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "WRONG_LENGTH");
     return false;
 }
 
@@ -784,12 +806,9 @@ bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len) {
 *   - Przepełnienie bufora
 *   - Nieoczekiwane znaki początku/końca
 ************************************************************************/
+
 void processReceivedChar(uint8_t received_char) {
-	char debug[50];
-	    sprintf(debug, "0x%02X", received_char);
-	    HAL_UART_Transmit(&huart2, (uint8_t*)debug, strlen(debug), HAL_MAX_DELAY);
     if (received_char == FRAME_START) {
-        HAL_UART_Transmit(&huart2, (uint8_t*)"Frame Start detected\r\n", 21, HAL_MAX_DELAY);
     	if(in_frame) {
     		resetFrameState();
     		in_frame = true;
@@ -799,18 +818,17 @@ void processReceivedChar(uint8_t received_char) {
     	escape_detected = false;
 
     } else if (received_char == FRAME_END && escape_detected == false) {
-        HAL_UART_Transmit(&huart2, (uint8_t*)"Frame End detected\r\n", 19, HAL_MAX_DELAY);
         if (in_frame) {
             if (decodeFrame(bx, &frame, bx_index)) {
-                prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "GOOD");
             	stopAnimation();
+            	sendStatus(ERR_GOOD);
                 handleCommand(&frame);
             } else {
-                prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL DECODE");
+            	sendStatus(ERR_FAIL);
             }
             resetFrameState();
         } else {
-            prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL FRAME");
+        	sendStatus(ERR_FAIL);
             resetFrameState();
         }
     } else if (in_frame) {
@@ -823,7 +841,7 @@ void processReceivedChar(uint8_t received_char) {
             } else if (received_char == FRAME_END_STUFF) {
                 bx[bx_index++] = FRAME_END;
             } else {
-                prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL UNSTUFFING");
+            	sendStatus(ERR_FAIL);
                 resetFrameState();
             }
             escape_detected = false;
@@ -833,7 +851,7 @@ void processReceivedChar(uint8_t received_char) {
         	bx[bx_index++] = received_char;
         }
     } else {
-    	prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "FAIL INDEX");
+    	sendStatus(ERR_FAIL);
     	resetFrameState();
     }
    }
@@ -876,12 +894,9 @@ void processReceivedChar(uint8_t received_char) {
 *   - Przekroczenie obszaru wyświetlacza
 ************************************************************************/
 void handleCommand(Frame *frame) {
-	prepareFrame(STM32_ADDR,PC_ADDR,"BCK", "siema");
     if (frame == NULL) {
         return;
     }
-	prepareFrame(STM32_ADDR,PC_ADDR,"BCK", "halo");
-
     CommandEntry commandTable[COMMAND_COUNT] = {
         {"ONK", executeONK},
         {"ONP", executeONP},
@@ -889,7 +904,7 @@ void handleCommand(Frame *frame) {
         {"ONN", executeONN},
         {"OFF", executeOFF}
     };
-
+    HAL_GPIO_WritePin(BL_GPIO_Port, BL_Pin, GPIO_PIN_SET);
     for (int i = 0; i < COMMAND_COUNT; i++) {
             if (safeCompare(frame->command, commandTable[i].command, COMMAND_LENGTH)) {
                 if (safeCompare(commandTable[i].command, "OFF", COMMAND_LENGTH)) {
@@ -909,18 +924,17 @@ void handleCommand(Frame *frame) {
                         clearFrame(frame);
                         return;
                     } else {
-                    prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "DISPLAY_AREA");
+                    sendStatus(ERR_DISPLAY_AREA);
                     return;
                 }
             } else {
             	lcdClear();
             	lcdCopy();
-                prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->data);
-                return;
+            	sendStatus(ERR_NOT_RECOGNIZED);
+            	return;
             }
         }
     }
-    prepareFrame(STM32_ADDR, PC_ADDR, "BCK", "NOT_RECOGNIZED%s", frame->command);
 }
 
 
@@ -967,11 +981,8 @@ void updateScrollingText(void) {
             text.y = text.startY;
             text.firstIteration = false;
         }
-
-
             lcdClear();
             hagl_put_text(text.displayText, text.x, text.y, text.color, font);
             lcdCopy();
-
     }
 }

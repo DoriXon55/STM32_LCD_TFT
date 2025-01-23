@@ -30,12 +30,12 @@
 #define PC_ADDR	'g'
 
 //==============================DEFINICJE WIELKOŚCI=======================================
-#define MAX_DATA_SIZE 128
-#define MIN_FRAME_LEN 10
+#define MIN_FRAME_LEN 7
 #define MAX_FRAME_LEN 270
 #define COMMAND_LENGTH 3
 #define MIN_DECODED_FRAME_LEN 7
 #define MAX_FRAME_WITHOUT_STUFFING 135
+#define MAX_DATA_SIZE 128
 
 //====================KOMENDY KTÓRE UŻYTKOWNIK MOŻE WYKONAĆ=========================
 #define COMMAND_COUNT 5
@@ -47,7 +47,6 @@
 
 
 //=====================STRUKTURA DLA ODBIORU I DEKODOWANIA RAMKI=================
-// TODO zmienic na Frame a poprzednie usunąć
 typedef struct{
 	uint8_t sender;
 	uint8_t receiver;
@@ -90,6 +89,41 @@ typedef struct {
     bool firstIteration;
     uint32_t lastUpdate;
 } ScrollingTextState;
+
+
+
+typedef enum {
+    ERR_GOOD = 0,           // ramka poprawnie odebrana
+    ERR_FAIL,               // ramka niepoprawnie odebrana
+    ERR_WRONG_SENDER,       // nieprawidłowy nadawca
+    ERR_WRONG_CRC,         // niezgodność sumy kontrolnej
+
+    // Błędy wyświetlacza
+    ERR_DISPLAY_AREA,         // współrzędne poza obszarem wyświetlacza
+    ERR_WRONG_OFF_DATA,       // niepoprawna wartość dla komendy OFF
+    ERR_WRONG_DATA,           // niepoprawne dane figury
+    ERR_INVALID_TRIANGLE,     // niepoprawne parametry trójkąta
+    ERR_TOO_MUCH_TEXT,        // przekroczony limit znaków
+    ERR_NOT_RECOGNIZED,       // błąd detekcji wartości
+
+    STATUS_COUNT
+} StatusCode_t;
+
+static const char* const STATUS_MESSAGES[] = {
+    "GOOD",              // STATUS_GOOD
+    "FAIL",              // STATUS_FAIL
+    "WRONG_SENDER",      // STATUS_WRONG_SENDER
+    "WRONG_CRC",         // STATUS_WRONG_CRC
+
+    "DISPLAY_AREA",      // ERR_DISPLAY_AREA
+    "WRONG_OFF_DATA",    // ERR_WRONG_OFF_DATA
+    "WRONG_DATA",        // ERR_WRONG_DATA
+    "INVALID_TRIANGLE",  // ERR_INVALID_TRIANGLE
+    "TOO_MUCH_TEXT",     // ERR_TOO_MUCH_TEXT
+    "NOT_RECOGNIZED"     // ERR_NOT_RECOGNIZED
+};
+
+
 //===================FUNCKJE DLA RAMEK======================================
 void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const char *format, ...);
 size_t byteStuffing(uint8_t *input, size_t input_len, uint8_t *output);

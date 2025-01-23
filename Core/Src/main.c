@@ -151,7 +151,6 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  //TODO umieścić resetowanie wyświetlacza po wyktyciu np. dwóch ramek albo kolejnej ramki.
   while (1)
   {
 	  waitForFrame();

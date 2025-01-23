@@ -10,5 +10,5 @@
 #include <stddef.h>
 #include "frame.h"
 
-void calculateCrc16(uint8_t *data, size_t length, char crc_out[2]);
+void calculateCrc16(uint8_t *data, size_t length, uint8_t crc_out[2]);
 
