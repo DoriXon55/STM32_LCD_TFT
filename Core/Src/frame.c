@@ -818,8 +818,8 @@ void processReceivedChar(uint8_t received_char) {
                 handleCommand(&frame);
             } else {
             	sendStatus(ERR_FAIL);
+            	resetFrameState();
             }
-            resetFrameState();
         }
     } else if (in_frame) {
         if (escape_detected) {

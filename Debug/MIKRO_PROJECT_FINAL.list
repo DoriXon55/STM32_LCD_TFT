@@ -37,15 +37,15 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, READONLY, DEBUGGING, OCTETS
  16 .debug_macro  000289df  00000000  00000000  0002b32e  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 17 .debug_line   0001643d  00000000  00000000  00053d0d  2**0
+ 17 .debug_line   0001643e  00000000  00000000  00053d0d  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 18 .debug_str    000ec313  00000000  00000000  0006a14a  2**0
+ 18 .debug_str    000ec313  00000000  00000000  0006a14b  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 19 .comment      00000043  00000000  00000000  0015645d  2**0
+ 19 .comment      00000043  00000000  00000000  0015645e  2**0
                   CONTENTS, READONLY
- 20 .debug_frame  000041d0  00000000  00000000  001564a0  2**2
+ 20 .debug_frame  000041d0  00000000  00000000  001564a4  2**2
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 21 .debug_line_str 0000006f  00000000  00000000  0015a670  2**0
+ 21 .debug_line_str 0000006f  00000000  00000000  0015a674  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
 
 Disassembly of section .text:
@@ -2644,11 +2644,12 @@ void processReceivedChar(uint8_t received_char) {
                 handleCommand(&frame);
  800148c:	482f      	ldr	r0, [pc, #188]	@ (800154c <processReceivedChar+0x118>)
  800148e:	f000 f861 	bl	8001554 <handleCommand>
- 8001492:	e002      	b.n	800149a <processReceivedChar+0x66>
+        if (in_frame) {
+ 8001492:	e051      	b.n	8001538 <processReceivedChar+0x104>
             	sendStatus(ERR_FAIL);
  8001494:	2001      	movs	r0, #1
  8001496:	f7ff fa6f 	bl	8000978 <sendStatus>
-            resetFrameState();
+            	resetFrameState();
  800149a:	f7ff f979 	bl	8000790 <resetFrameState>
         if (in_frame) {
  800149e:	e04b      	b.n	8001538 <processReceivedChar+0x104>
