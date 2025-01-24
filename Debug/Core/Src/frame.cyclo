@@ -16,6 +16,6 @@
 ../Core/Src/frame.c:611:8:byteStuffing	5
 ../Core/Src/frame.c:663:6:prepareFrame	1
 ../Core/Src/frame.c:746:6:decodeFrame	6
-../Core/Src/frame.c:810:6:processReceivedChar	14
-../Core/Src/frame.c:896:6:handleCommand	7
-../Core/Src/frame.c:942:6:updateScrollingText	11
+../Core/Src/frame.c:809:6:processReceivedChar	13
+../Core/Src/frame.c:884:6:handleCommand	7
+../Core/Src/frame.c:930:6:updateScrollingText	11

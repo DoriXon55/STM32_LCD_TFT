@@ -751,12 +751,11 @@ bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len) {
         uint8_t k = 0;
         frame->sender = bx[k++];
         frame->receiver = bx[k++];
-        if(frame->sender != 'g')
+        if(frame->sender != PC_ADDR)
         {
         	sendStatus(ERR_WRONG_SENDER);
         	return false;
         }
-
 
         memcpy(frame->command, &bx[k], COMMAND_LENGTH);
         k += COMMAND_LENGTH;
@@ -809,14 +808,8 @@ bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len) {
 
 void processReceivedChar(uint8_t received_char) {
     if (received_char == FRAME_START) {
-    	if(in_frame) {
-    		resetFrameState();
-    		in_frame = true;
-    	}
+    	resetFrameState();
     	in_frame = true;
-    	bx_index = 0;
-    	escape_detected = false;
-
     } else if (received_char == FRAME_END && escape_detected == false) {
         if (in_frame) {
             if (decodeFrame(bx, &frame, bx_index)) {
@@ -827,12 +820,8 @@ void processReceivedChar(uint8_t received_char) {
             	sendStatus(ERR_FAIL);
             }
             resetFrameState();
-        } else {
-        	sendStatus(ERR_FAIL);
-            resetFrameState();
         }
     } else if (in_frame) {
-    	if(bx_index < MAX_FRAME_WITHOUT_STUFFING) {
         if (escape_detected) {
             if (received_char == FRAME_START_STUFF) {
                 bx[bx_index++] = FRAME_START;
@@ -850,12 +839,11 @@ void processReceivedChar(uint8_t received_char) {
         } else {
         	bx[bx_index++] = received_char;
         }
-    } else {
-    	sendStatus(ERR_FAIL);
+    } else if (bx_index >= MAX_FRAME_WITHOUT_STUFFING) {
     	resetFrameState();
     }
-   }
 }
+
 
 
 
