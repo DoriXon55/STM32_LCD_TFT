@@ -29,18 +29,7 @@ extern ring_buffer txRingBuffer;
 extern uint8_t USART_RxBuf[];
 extern uint8_t USART_TxBuf[];
 
-/************************************************************************
-* Funkcja: HAL_UART_TxCpltCallback()
-*	(Callback funkcji przerwania odbioru UART
-*	Funkcja wywoływana po zakończeniu transmisji jednego bajtu przez UART.
-*	Sprawdza czy są kolejne dane do wysłania w buforze kołowym transmisji.
-*	Jeśli są, pobiera kolejny bajt i rozpoczyna jego transmisję)
-*
-* Korzysta z:
-*   txRingBuffer - struktura bufora kołowego transmisji
-*   USART_TxBuf - bufor danych do transmisji
-*   HAL_UART_Transmit_IT - funkcja HAL rozpoczynająca transmisję
-************************************************************************/
+
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
    if(huart==&huart2){
 	   if(txRingBuffer.writeIndex!=txRingBuffer.readIndex){
@@ -51,18 +40,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
    }
 }
 
-/************************************************************************
-* Funkcja: HAL_UART_RxCpltCallback()
-*	(Callback funkcji przerwania odbioru UART
-*	Funkcja wywoływana po odbiorze jednego bajtu przez UART.
-*	Inkrementuje wskaźnik zapisu w buforze kołowym odbioru.
-*	Rozpoczyna oczekiwanie na kolejny bajt.)
-*
-* Korzysta z:
-*   rxRingBuffer - struktura bufora kołowego odbioru
-*   USART_RxBuf - bufor danych odebranych
-*   HAL_UART_Receive_IT - funkcja HAL rozpoczynająca odbiór
-************************************************************************/
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 	 if(huart==&huart2){
 		 rxRingBuffer.writeIndex = (rxRingBuffer.writeIndex + 1) % rxRingBuffer.mask;

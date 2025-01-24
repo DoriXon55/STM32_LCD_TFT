@@ -21,7 +21,7 @@
 #include "spi.h"
 
 /* USER CODE BEGIN 0 */
-
+#include "lcd.h"
 /* USER CODE END 0 */
 
 SPI_HandleTypeDef hspi2;
@@ -57,7 +57,7 @@ void MX_SPI2_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN SPI2_Init 2 */
-
+  lcdInit();
   /* USER CODE END SPI2_Init 2 */
 
 }

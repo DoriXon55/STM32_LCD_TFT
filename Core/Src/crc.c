@@ -7,21 +7,6 @@
 
 #include "crc.h"
 
-
-/************************************************************************
-* Zmienna: crc16_table
-* Typ: uint16_t[256]
-* Cel: Tablica lookup dla algorytmu CRC-16
-*
-* (Zawiera wstępnie obliczone wartości CRC-16 dla wszystkich możliwych
-* 8-bitowych wartości (0-255). Używa wielomianu 0x1021.
-* Tablica jest zorganizowana w 32 wiersze po 8 wartości.)
-*
-* Format wartości:
-*   - Każda wartość jest 16-bitowa
-*   - Wartości są zapisane w formacie heksadecymalnym
-*   - Wartości są obliczone dla standardowego CRC-16/IBM-3740
-************************************************************************/
 uint16_t crc16_table[256] = {
     0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
     0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef,
@@ -57,38 +42,6 @@ uint16_t crc16_table[256] = {
     0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0
 };
 
-
-
-
-/************************************************************************
-* Funkcja: calculate_crc16()
-* Cel: Oblicza CRC-16 dla podanego ciągu danych
-* Parametry:
-*   - data: Wskaźnik na dane wejściowe
-*   - length: Długość danych wejściowych w bajtach
-*   - crc_out: Tablica 2 bajtów na wynik CRC
-*
-* Zwraca: void (wynik zapisywany w crc_out)
-*
-*   Funkcja implementuje algorytm CRC-16/IBM-3740 używając tablicy lookup.
-*   1. Inicjalizuje CRC wartością 0xFFFF
-*   2. Dla każdego bajtu danych:
-*      - Oblicza indeks do tablicy lookup używając XOR z górnym bajtem CRC
-*      - Aktualizuje CRC używając wartości z tablicy
-*   3. Zapisuje końcowy wynik w formie dwóch bajtów
-*
-* Kroki algorytmu:
-*   1. crc = 0xFFfF (wartość inicjująca)
-*   2. Dla każdego bajtu:
-*      - table_index = (crc >> 8) ^ byte
-*      - crc = (crc << 8) ^ crc16_table[table_index]
-*   3. Zapisz wynik:
-*      - crc_out[0] = (crc >> 8) & 0xFF (starszy bajt)
-*      - crc_out[1] = crc & 0xFF (młodszy bajt)
-*
-* Korzysta z:
-*   - crc16_table: Tablica lookup z wstępnie obliczonymi wartościami
-************************************************************************/
 void calculateCrc16(uint8_t *data, size_t length, uint8_t crc_out[2]) {
     uint16_t crc = 0xFFFF;
 

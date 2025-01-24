@@ -6,6 +6,8 @@
  */
 #pragma once
 
+
+//==============================INCLUDES============================================
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -14,39 +16,46 @@
 #include <string.h>
 #include <stdarg.h>
 #include <wchar.h>
+//==================================================================================
 
-//==============================DEFINICJE FLAG=======================================
 
+//==============================DEFINICJE FLAG======================================
 #define FRAME_START '~'
 #define FRAME_END '`'
 #define ESCAPE_CHAR '}'
 #define ESCAPE_CHAR_STUFF ']'
 #define FRAME_END_STUFF '&'
 #define FRAME_START_STUFF '^'
+//==================================================================================
 
 
-//==============================DEFINICJE ADRESÓW=======================================
+//====================================ADRESY========================================
 #define STM32_ADDR 'h'
 #define PC_ADDR	'g'
+//==================================================================================
 
-//==============================DEFINICJE WIELKOŚCI=======================================
+
+//==============================DEFINICJE WIELKOŚCI=================================
 #define MIN_FRAME_LEN 7
 #define MAX_FRAME_LEN 270
 #define COMMAND_LENGTH 3
 #define MIN_DECODED_FRAME_LEN 7
 #define MAX_FRAME_WITHOUT_STUFFING 135
 #define MAX_DATA_SIZE 128
+//==================================================================================
+
 
 //====================KOMENDY KTÓRE UŻYTKOWNIK MOŻE WYKONAĆ=========================
 #define COMMAND_COUNT 5
-#define COMMAND_ONK "ONK" //wyświetlanie koła
-#define COMMAND_ONP "ONP" //wyświetlanie prostokąta
-#define COMMAND_ONT "ONT" //wyświetlanie trójkąta
-#define COMMAND_ONN "ONN" //wyświetlanie napisu
-#define COMMAND_OFF "OFF" //wyłączenie wyświetlacza
+#define COMMAND_ONK "ONK"
+#define COMMAND_ONP "ONP"
+#define COMMAND_ONT "ONT"
+#define COMMAND_ONN "ONN"
+#define COMMAND_OFF "OFF"
+//==================================================================================
 
 
-//=====================STRUKTURA DLA ODBIORU I DEKODOWANIA RAMKI=================
+//=====================STRUKTURY==========================
 typedef struct{
 	uint8_t sender;
 	uint8_t receiver;
@@ -54,22 +63,6 @@ typedef struct{
 	uint8_t data[MAX_DATA_SIZE];
 } Frame;
 
-//====================STRUKTURA DLA ROZPOZNAWANIA KOMENDY======================
-
-/************************************************************************
-* Struktura: CommandEntry
-* Cel: Definiuje mapowanie między komendą a funkcją ją obsługującą
-*
-*   1. command[COMMAND_LENGTH]:
-*      - Tablica znaków przechowująca nazwę komendy
-*      - Długość określona przez COMMAND_LENGTH (zazwyczaj 3)
-*      - Przykład: "ONK", "ONP", "ONN"
-*
-*   2. void (*function)(Receive_Frame *frame):
-*      - Wskaźnik na funkcję obsługującą komendę
-*      - Przyjmuje parametr typu Receive_Frame*
-*      - Zwraca void
-************************************************************************/
 typedef struct {
     char command[COMMAND_LENGTH];
     void (*function)(Frame *frame);
@@ -77,10 +70,10 @@ typedef struct {
 
 typedef struct {
     wchar_t displayText[50];
-    int16_t x;              // Aktualna pozycja X
-    int16_t y;              // Aktualna pozycja Y
-    int16_t startX;         // Początkowa pozycja X
-    int16_t startY;         // Początkowa pozycja Y
+    int16_t x;
+    int16_t y;
+    int16_t startX;
+    int16_t startY;
     uint8_t fontSize;
     uint8_t scrollSpeed;
     uint16_t color;
@@ -90,46 +83,41 @@ typedef struct {
     uint32_t lastUpdate;
 } ScrollingTextState;
 
-
-
 typedef enum {
-    ERR_GOOD = 0,           // ramka poprawnie odebrana
-    ERR_FAIL,               // ramka niepoprawnie odebrana
-    ERR_WRONG_SENDER,       // nieprawidłowy nadawca
-    ERR_WRONG_CRC,         // niezgodność sumy kontrolnej
+    ERR_GOOD = 0,
+    ERR_FAIL,
+    ERR_WRONG_SENDER,
+    ERR_WRONG_CRC,
 
-    // Błędy wyświetlacza
-    ERR_DISPLAY_AREA,         // współrzędne poza obszarem wyświetlacza
-    ERR_WRONG_OFF_DATA,       // niepoprawna wartość dla komendy OFF
-    ERR_WRONG_DATA,           // niepoprawne dane figury
-    ERR_INVALID_TRIANGLE,     // niepoprawne parametry trójkąta
-    ERR_TOO_MUCH_TEXT,        // przekroczony limit znaków
-    ERR_NOT_RECOGNIZED,       // błąd detekcji wartości
+    ERR_DISPLAY_AREA,
+    ERR_WRONG_OFF_DATA,
+    ERR_WRONG_DATA,
+    ERR_INVALID_TRIANGLE,
+    ERR_TOO_MUCH_TEXT,
+    ERR_NOT_RECOGNIZED,
 
     STATUS_COUNT
 } StatusCode_t;
 
 static const char* const STATUS_MESSAGES[] = {
-    "GOOD",              // STATUS_GOOD
-    "FAIL",              // STATUS_FAIL
-    "WRONG_SENDER",      // STATUS_WRONG_SENDER
-    "WRONG_CRC",         // STATUS_WRONG_CRC
+    "GOOD",
+    "FAIL",
+    "WRONG_SENDER",
+    "WRONG_CRC",
 
-    "DISPLAY_AREA",      // ERR_DISPLAY_AREA
-    "WRONG_OFF_DATA",    // ERR_WRONG_OFF_DATA
-    "WRONG_DATA",        // ERR_WRONG_DATA
-    "INVALID_TRIANGLE",  // ERR_INVALID_TRIANGLE
-    "TOO_MUCH_TEXT",     // ERR_TOO_MUCH_TEXT
-    "NOT_RECOGNIZED"     // ERR_NOT_RECOGNIZED
+    "DISPLAY_AREA",
+    "WRONG_OFF_DATA",
+    "WRONG_DATA",
+    "INVALID_TRIANGLE",
+    "TOO_MUCH_TEXT",
+    "NOT_RECOGNIZED"
 };
+//=======================================================
 
 
 //===================FUNCKJE DLA RAMEK======================================
 void prepareFrame(uint8_t sender, uint8_t receiver, const char *command, const char *format, ...);
-size_t byteStuffing(uint8_t *input, size_t input_len, uint8_t *output);
-size_t byteUnstuffing(uint8_t *input, size_t input_len, uint8_t *output);
-bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len);
 void handleCommand(Frame *frame);
 void processReceivedChar(uint8_t received_char);
 void updateScrollingText(void);
-
+//==========================================================================

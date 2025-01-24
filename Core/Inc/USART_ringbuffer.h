@@ -5,6 +5,9 @@
  *      Author: doria
  */
 #pragma once
+
+
+//========================================INCLUDES==============================================
 #include <string.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -12,21 +15,34 @@
 #include "main.h"
 #include "usart.h"
 #include <stdint.h>
+//==============================================================================================
+
+
+
+
 
 //==============================DEFINICJE WIELKOŚCI BUFORA KOŁOWEGO=============================
 #define TX_BUFFER_SIZE 1890
 #define RX_BUFFER_SIZE 270
+//==============================================================================================
 
+
+//=======================================STRUKTURY===============================================
 typedef struct {
 	uint8_t* buffer;
 	uint32_t readIndex;
 	uint32_t writeIndex;
 	uint32_t mask;
 }ring_buffer;
+//==============================================================================================
 
+
+
+//======================================FUNKCJE=================================================
 uint8_t USART_kbhit(void);
 int16_t USART_getchar(void);
 uint8_t USART_getline(char *buf);
 void USART_fsend(char* format, ...);
 void ringBufferSetup(ring_buffer* rb, uint8_t* buffer, uint32_t size);
 void USART_sendFrame(const uint8_t* data, size_t length);
+//==============================================================================================

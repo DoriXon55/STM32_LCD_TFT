@@ -1,1 +1,1 @@
-../Core/Src/crc.c:92:6:calculateCrc16	40	static
+../Core/Src/crc.c:45:6:calculateCrc16	40	static

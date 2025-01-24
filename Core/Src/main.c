@@ -30,7 +30,6 @@
 #include "USART_ringbuffer.h"
 #include "frame.h"
 #include "hagl.h"
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,52 +59,20 @@ volatile uint32_t tick;
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 void delay(uint32_t delayMs);
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-
-
-/************************************************************************
-* Funkcja: delay()
-* Cel: Implementuje opóźnienie w milisekundach
-* Funkcja realizuje opóźnienie blokujące wykorzystując globalny licznik
-* systemowy 'tick'. Czeka aż licznik osiągnie wartość startową + żądane
-* opóźnienie.
-*
-* Parametry:
-*   - delayMs: Liczba milisekund do odczekania
-
-* Korzysta z:
-*   - tick: Globalna zmienna zwiększana w przerwaniu systemowym
-************************************************************************/
+static void waitForFrame(void)
+{
+	if (USART_kbhit()) {
+	        uint8_t receivedChar = USART_getchar();
+	        processReceivedChar(receivedChar);
+	 }
+}
 void delay(uint32_t delayMs){
 	uint32_t startTime = tick;
 	while(tick < (startTime+delayMs));
-}
-
-
-/************************************************************************
-* Funkcja: waitForFrame()
-*
-* Cel: Obsługa odbioru danych z UART podczas oczekiwania na ramkę
-* Funkcja sprawdza czy są dostępne dane w buforze UART.
-* Jeśli tak, pobiera jeden znak i przekazuje go do funkcji
-* przetwarzającej ramkę komunikacyjną.
-*
-* Korzysta z:
-*   - USART_kbhit: Sprawdzenie dostępności danych
-*   - USART_getchar: Pobranie znaku z UART
-*   - processReceivedChar: Przetworzenie odebranego znaku
-************************************************************************/
-void waitForFrame(void)
-{
-	if (USART_kbhit()) {
-	        uint8_t received_char = USART_getchar();
-	        processReceivedChar(received_char);
-	 }
 }
 /* USER CODE END 0 */
 
@@ -144,8 +111,6 @@ int main(void)
   MX_USART2_UART_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
-
-  lcdInit(); // inicjalizacja wyświetlacza
 
   /* USER CODE END 2 */
 
