@@ -120,7 +120,7 @@ void lcdInit(void) {
     delay(120);
     lcdCmd(ST7735S_DISPON);
     HAL_GPIO_WritePin(BL_GPIO_Port, BL_Pin, GPIO_PIN_SET);
-    memset(frameBuffer, 0, sizeof(frameBuffer));
+    lcdClear();
 }
 
 void lcdPutPixel(int x, int y, uint16_t color)

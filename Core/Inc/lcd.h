@@ -42,33 +42,7 @@
 #define LCD_HEIGHT	128
 //=========================================================================
 
-//=============================STRUKTURY========================================
-typedef enum{
-	BLACK = 0x0000,
-	RED = 0x00F8,
-	GREEN = 0xE007,
-	BLUE = 0x1F00,
-	YELLOW = 0xE0FF,
-	MAGENTA = 0x1FF8,
-	CYAN = 0xFF07,
-	WHITE = 0xFFFF
-}Color_t;
 
-typedef struct {
-    const char *name;
-    Color_t value;
-} ColorMap;
-
-static const ColorMap color_map[] = {
-    {"RED", RED},
-    {"GREEN", GREEN},
-    {"BLUE", BLUE},
-    {"YELLOW", YELLOW},
-    {"MAGENTA", MAGENTA},
-    {"CYAN", CYAN},
-    {"WHITE", WHITE},
-    {"BLACK", BLACK}
-};
 //===============================================================================
 
 
