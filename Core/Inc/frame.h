@@ -86,7 +86,7 @@ typedef struct {
 typedef enum {
     ERR_GOOD = 0,
     ERR_FAIL,
-    ERR_WRONG_SENDER,
+    ERR_WRONG_RECEIVER,
     ERR_WRONG_CRC,
 
     ERR_DISPLAY_AREA,
@@ -102,7 +102,7 @@ typedef enum {
 static const char* const STATUS_MESSAGES[] = {
     "GOOD",
     "FAIL",
-    "WRONG_SENDER",
+    "WRONG_RECEIVER",
     "WRONG_CRC",
 
     "DISPLAY_AREA",

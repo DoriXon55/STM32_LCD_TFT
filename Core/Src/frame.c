@@ -140,7 +140,7 @@ static bool parseParameters(const uint8_t *data, const char *format, ...) {
 			uint8_t msb = *data_ptr++;
 			if (*data_ptr == ',')
 				data_ptr++;
-			*color_ptr = ((uint16_t) msb << 8) | lsb;
+			*color_ptr = ((uint16_t) msb << 8) | lsb; //użycie funkcji asemblera __REV16()
 			break;
 		}
 		case 't': {
@@ -191,8 +191,8 @@ static bool decodeFrame(uint8_t *bx, Frame *frame, uint8_t len) {
 		uint8_t k = 0;
 		frame->sender = bx[k++];
 		frame->receiver = bx[k++];
-		if (frame->sender != PC_ADDR) {
-			sendStatus(ERR_WRONG_SENDER);
+		if (frame->receiver != STM32_ADDR) {
+			sendStatus(ERR_WRONG_RECEIVER);
 			return false;
 		}
 
@@ -404,16 +404,12 @@ void processReceivedChar(uint8_t receivedChar) {
 		if (inFrame) {
 			if (decodeFrame(bx, &frame, bxIndex)) {
 				stopAnimation();
-				sendStatus(ERR_GOOD);
 				handleCommand(&frame);
-			} else {
-				sendStatus(ERR_FAIL);
 			}
 			resetFrameState();
 			return;
 		}
 	} else if (inFrame) {
-		if (bxIndex <= MAX_FRAME_WITHOUT_STUFFING) {
 			if (escapeDetected) {
 				if (receivedChar == FRAME_START_STUFF) {
 					bx[bxIndex++] = FRAME_START;
@@ -422,7 +418,6 @@ void processReceivedChar(uint8_t receivedChar) {
 				} else if (receivedChar == FRAME_END_STUFF) {
 					bx[bxIndex++] = FRAME_END;
 				} else {
-					sendStatus(ERR_FAIL);
 					resetFrameState();
 				}
 				escapeDetected = false;
@@ -431,9 +426,10 @@ void processReceivedChar(uint8_t receivedChar) {
 			} else {
 				bx[bxIndex++] = receivedChar;
 			}
-		} else {
-			resetFrameState();
-		}
+			if(bxIndex > MAX_FRAME_WITHOUT_STUFFING)
+			{
+				resetFrameState();
+			}
 	}
 }
 
@@ -441,15 +437,20 @@ void handleCommand(Frame *frame) {
 	if (frame == NULL) {
 		return;
 	}
-	CommandEntry commandTable[COMMAND_COUNT] = { { "ONK", executeONK }, { "ONP",
-			executeONP }, { "ONT", executeONT }, { "ONN", executeONN }, { "OFF",
-			executeOFF } };
+	CommandEntry commandTable[COMMAND_COUNT] = {
+			{ "ONK", executeONK },
+			{ "ONP", executeONP },
+			{ "ONT", executeONT },
+			{ "ONN", executeONN },
+			{ "OFF", executeOFF } };
 	HAL_GPIO_WritePin(BL_GPIO_Port, BL_Pin, GPIO_PIN_SET);
 	for (int i = 0; i < COMMAND_COUNT; i++) {
 		if (safeCompare(frame->command, commandTable[i].command,
 				COMMAND_LENGTH)) {
+
+			sendStatus(ERR_GOOD);
+
 			if (safeCompare(commandTable[i].command, "OFF", COMMAND_LENGTH)) {
-				lcdClear();
 				commandTable[i].function(frame);
 				lcdCopy();
 				clearFrame(frame);
